@@ -1,0 +1,25 @@
+# Dépendances
+node_modules/
+package-lock.json.bak
+
+# Données locales & Base SQLite
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal
+data/*.log
+data/*.err
+
+# Fichiers de logs
+*.log
+devhub.log
+devhub.err.log
+
+# Variables d'environnement
+.env
+.env.local
+
+# Système d'exploitation & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

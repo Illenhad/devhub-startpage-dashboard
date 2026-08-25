@@ -1,0 +1,668 @@
+/* Styles personnalisés pour le Dashboard Startpage (Dark & Light Theme) */
+
+@keyframes pulseGlowGreen {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes pulseGlowRed {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+}
+
+.status-dot-running {
+  animation: pulseGlowGreen 2s infinite;
+}
+
+.status-dot-stopped {
+  animation: pulseGlowRed 3s infinite;
+}
+
+/* Glassmorphism & Cards (Mode Sombre par défaut) */
+.glass-card {
+  background: rgba(24, 24, 27, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Streaming cursor */
+.typing-cursor::after {
+  content: '▋';
+  display: inline-block;
+  vertical-align: middle;
+  color: #6366f1;
+  animation: blink 0.9s infinite;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Markdown rendered body (Dark) */
+.markdown-body {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #e4e4e7;
+}
+
+.markdown-body p {
+  margin-bottom: 0.75rem;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body pre {
+  background: #09090b;
+  border: 1px solid #27272a;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+
+.markdown-body code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8em;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  color: #a5b4fc;
+}
+
+.markdown-body pre code {
+  background: transparent;
+  padding: 0;
+  color: #f4f4f5;
+}
+
+.markdown-body ul, .markdown-body ol {
+  padding-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-body ul {
+  list-style-type: disc;
+}
+
+.markdown-body ol {
+  list-style-type: decimal;
+}
+
+.markdown-body h1, .markdown-body h2, .markdown-body h3 {
+  font-weight: 700;
+  color: #ffffff;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 1rem;
+  margin: 1rem auto;
+  display: block;
+  border: 1px solid #27272a;
+}
+
+.markdown-body blockquote {
+  border-left: 3px solid #6366f1;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: #a1a1aa;
+  font-style: italic;
+}
+
+.markdown-body a {
+  color: #818cf8;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.markdown-body a:hover {
+  color: #a5b4fc;
+}
+
+
+/* ==========================================================================
+   MODE CLAIR & SOMBRE (LIGHT & DARK THEMES) — Rendu universel multi-OS
+   ========================================================================== */
+
+html.dark,
+html.dark body,
+body.dark {
+  background-color: #09090b !important;
+  color: #f4f4f5 !important;
+}
+
+html.light,
+html.light body,
+body.light {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* Cartes Glassmorphism en Mode Clair */
+html.light .glass-card,
+body.light .glass-card {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02) !important;
+}
+
+html.light .glass-card:hover {
+  border-color: #cbd5e1 !important;
+}
+
+/* Barre de navigation */
+html.light nav {
+  border-color: #e2e8f0 !important;
+}
+
+html.light nav .bg-zinc-900\/90,
+html.light nav .bg-zinc-900 {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Tuiles intérieures, conteneurs et fonds en mode clair */
+html.light [class*="bg-zinc-950"],
+html.light [class*="bg-zinc-900"] {
+  background-color: #f1f5f9 !important;
+}
+
+html.light [class*="bg-zinc-800"] {
+  background-color: #e2e8f0 !important;
+}
+
+/* Cartes d'articles RSS et blocs interactifs */
+html.light article.bg-zinc-900\/80,
+html.light article[class*="bg-zinc-900"] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 15px -2px rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light article.bg-zinc-950\/50,
+html.light article[class*="bg-zinc-950"] {
+  background-color: #f8fafc !important;
+  border-color: #f1f5f9 !important;
+}
+
+/* Boutons d'action dans les cartes en mode clair */
+html.light button[class*="bg-zinc-900"],
+html.light button[class*="bg-zinc-800"] {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+html.light button[class*="bg-zinc-900"]:hover,
+html.light button[class*="bg-zinc-800"]:hover {
+  background-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* Boutons primaires de marque conservent leur éclat */
+html.light .tab-nav-btn.bg-brand-500,
+html.light .theme-toggle-btn.bg-brand-500,
+html.light .theme-preset-btn.bg-brand-500,
+html.light button.bg-brand-500 {
+  background-color: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+/* Bordures globales en mode clair */
+html.light [class*="border-zinc-"] {
+  border-color: #e2e8f0 !important;
+}
+
+/* Typographie & Titres en mode clair */
+html.light .text-white,
+html.light .text-zinc-100,
+html.light .text-zinc-200 {
+  color: #0f172a !important;
+}
+
+html.light .text-zinc-300,
+html.light .text-zinc-400 {
+  color: #334155 !important;
+}
+
+html.light .text-zinc-500,
+html.light .text-zinc-600 {
+  color: #64748b !important;
+}
+
+/* Couleurs d'accentuation à fort contraste pour fond clair */
+html.light .text-indigo-300,
+html.light .text-indigo-400 {
+  color: #4338ca !important;
+}
+
+html.light .text-emerald-300,
+html.light .text-emerald-400 {
+  color: #047857 !important;
+}
+
+html.light .text-amber-300,
+html.light .text-amber-400 {
+  color: #b45309 !important;
+}
+
+html.light .text-purple-300,
+html.light .text-purple-400 {
+  color: #6d28d9 !important;
+}
+
+html.light .text-sky-300,
+html.light .text-sky-400 {
+  color: #0369a1 !important;
+}
+
+html.light .text-brand-300,
+html.light .text-brand-400 {
+  color: #4338ca !important;
+}
+
+html.light .text-rose-300,
+html.light .text-rose-400 {
+  color: #be123c !important;
+}
+
+/* Fonds d'accentuation translucides ajustés */
+html.light .bg-amber-500\/10,
+html.light .bg-amber-500\/15 {
+  background-color: #fef3c7 !important;
+  border-color: #fde68a !important;
+}
+
+html.light .bg-emerald-500\/10,
+html.light .bg-emerald-500\/15 {
+  background-color: #d1fae5 !important;
+  border-color: #a7f3d0 !important;
+}
+
+html.light .bg-purple-500\/10,
+html.light .bg-purple-500\/15 {
+  background-color: #f3e8ff !important;
+  border-color: #e9d5ff !important;
+}
+
+html.light .bg-indigo-500\/10,
+html.light .bg-indigo-500\/15 {
+  background-color: #e0e7ff !important;
+  border-color: #c7d2fe !important;
+}
+
+html.light .bg-sky-500\/10,
+html.light .bg-sky-500\/15 {
+  background-color: #e0f2fe !important;
+  border-color: #bae6fd !important;
+}
+
+html.light .bg-rose-500\/10,
+html.light .bg-rose-500\/15 {
+  background-color: #ffe4e6 !important;
+  border-color: #fecdd3 !important;
+}
+
+/* Champs de saisie, selects et formulaires */
+html.light input,
+html.light select,
+html.light textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Boutons d'onglets, boutons de mode et boutons de preset inactifs */
+html.light .tab-nav-btn:not(.bg-brand-500),
+html.light .theme-toggle-btn:not(.bg-brand-500),
+html.light .theme-preset-btn:not(.bg-brand-500) {
+  color: #475569 !important;
+}
+
+html.light .tab-nav-btn:not(.bg-brand-500):hover,
+html.light .theme-toggle-btn:not(.bg-brand-500):hover,
+html.light .theme-preset-btn:not(.bg-brand-500):hover {
+  background-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* Modale Lecteur RSS en mode clair */
+html.light #rss-reader-modal .glass-card,
+html.light #rss-reader-modal [class*="bg-zinc-950"] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html.light #rss-reader-modal-body {
+  color: #1e293b !important;
+}
+
+/* Scrollbar en mode clair */
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.32);
+}
+
+/* Markdown en mode clair */
+html.light .markdown-body {
+  color: #334155 !important;
+}
+
+html.light .markdown-body h1,
+html.light .markdown-body h2,
+html.light .markdown-body h3 {
+  color: #0f172a !important;
+}
+
+html.light .markdown-body pre {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light .markdown-body code {
+  background: #e2e8f0 !important;
+  color: #4338ca !important;
+}
+
+html.light .markdown-body pre code {
+  background: transparent !important;
+  color: #0f172a !important;
+}
+
+html.light .markdown-body blockquote {
+  color: #64748b !important;
+}
+
+/* ==========================================================================
+   GESTION DES AMBIANCES & THÈMES DE TRAVAIL (Code, Lecture, Performance)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. THÈME CODE & DÉVELOPPEUR (Typographie Monospace intégrale, Vert Matrix)
+   -------------------------------------------------------------------------- */
+html[data-theme-preset="code"] body,
+html[data-theme-preset="code"] input,
+html[data-theme-preset="code"] button,
+html[data-theme-preset="code"] select,
+html[data-theme-preset="code"] textarea,
+html[data-theme-preset="code"] h1,
+html[data-theme-preset="code"] h2,
+html[data-theme-preset="code"] h3,
+html[data-theme-preset="code"] h4,
+html[data-theme-preset="code"] p,
+html[data-theme-preset="code"] span,
+html[data-theme-preset="code"] .markdown-body {
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Menlo, Consolas, monospace !important;
+  letter-spacing: -0.015em;
+}
+
+/* Mode Sombre - Thème Code */
+html.dark[data-theme-preset="code"] body {
+  background-color: #05080e !important;
+}
+
+html.dark[data-theme-preset="code"] .glass-card {
+  background: rgba(8, 14, 22, 0.85) !important;
+  border-color: rgba(16, 185, 129, 0.22) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+html.dark[data-theme-preset="code"] .glass-card:hover {
+  border-color: rgba(16, 185, 129, 0.45) !important;
+}
+
+html.dark[data-theme-preset="code"] .tab-nav-btn.bg-brand-500,
+html.dark[data-theme-preset="code"] .theme-toggle-btn.bg-brand-500,
+html.dark[data-theme-preset="code"] .theme-preset-btn.bg-brand-500,
+html.dark[data-theme-preset="code"] button.bg-brand-500 {
+  background-color: #10b981 !important;
+  color: #042f1d !important;
+  font-weight: 800 !important;
+}
+
+html.dark[data-theme-preset="code"] .text-brand-300,
+html.dark[data-theme-preset="code"] .text-brand-400 {
+  color: #34d399 !important;
+}
+
+html.dark[data-theme-preset="code"] .border-brand-500 {
+  border-color: #10b981 !important;
+}
+
+html.dark[data-theme-preset="code"] [class*="bg-indigo-500/10"] {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+  color: #34d399 !important;
+}
+
+/* Jauges Code */
+html.dark[data-theme-preset="code"] [id$="-bar"] {
+  background: linear-gradient(90deg, #10b981, #06b6d4) !important;
+}
+
+/* Mode Clair - Thème Code */
+html.light[data-theme-preset="code"] body {
+  background-color: #f3f6f9 !important;
+}
+
+html.light[data-theme-preset="code"] .glass-card {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light[data-theme-preset="code"] .tab-nav-btn.bg-brand-500,
+html.light[data-theme-preset="code"] .theme-toggle-btn.bg-brand-500,
+html.light[data-theme-preset="code"] .theme-preset-btn.bg-brand-500,
+html.light[data-theme-preset="code"] button.bg-brand-500 {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   2. THÈME LECTURE & SÉRÉNITÉ (Typographie Sérif humaniste, Ambre doux)
+   -------------------------------------------------------------------------- */
+html[data-theme-preset="reading"] body,
+html[data-theme-preset="reading"] h1,
+html[data-theme-preset="reading"] h2,
+html[data-theme-preset="reading"] h3,
+html[data-theme-preset="reading"] h4,
+html[data-theme-preset="reading"] p,
+html[data-theme-preset="reading"] .markdown-body,
+html[data-theme-preset="reading"] article {
+  font-family: 'Newsreader', 'Merriweather', 'Charter', 'Georgia', Cambria, serif !important;
+}
+
+html[data-theme-preset="reading"] .markdown-body,
+html[data-theme-preset="reading"] article p,
+html[data-theme-preset="reading"] #rss-reader-modal-body {
+  line-height: 1.8 !important;
+  font-size: 0.95rem !important;
+}
+
+/* Mode Sombre - Thème Lecture */
+html.dark[data-theme-preset="reading"] body {
+  background-color: #0f141d !important;
+}
+
+html.dark[data-theme-preset="reading"] .glass-card {
+  background: rgba(20, 26, 36, 0.88) !important;
+  border-color: rgba(245, 158, 11, 0.18) !important;
+}
+
+html.dark[data-theme-preset="reading"] .glass-card:hover {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+html.dark[data-theme-preset="reading"] .tab-nav-btn.bg-brand-500,
+html.dark[data-theme-preset="reading"] .theme-toggle-btn.bg-brand-500,
+html.dark[data-theme-preset="reading"] .theme-preset-btn.bg-brand-500,
+html.dark[data-theme-preset="reading"] button.bg-brand-500 {
+  background-color: #d97706 !important;
+  color: #ffffff !important;
+}
+
+html.dark[data-theme-preset="reading"] .text-brand-300,
+html.dark[data-theme-preset="reading"] .text-brand-400 {
+  color: #fbbf24 !important;
+}
+
+html.dark[data-theme-preset="reading"] [id$="-bar"] {
+  background: linear-gradient(90deg, #d97706, #f59e0b) !important;
+}
+
+/* Mode Clair - Thème Lecture (Papier Crème & Encre douce) */
+html.light[data-theme-preset="reading"] body {
+  background-color: #fbf8f2 !important;
+  color: #262320 !important;
+}
+
+html.light[data-theme-preset="reading"] .glass-card {
+  background: #ffffff !important;
+  border-color: #e6dfd3 !important;
+  box-shadow: 0 4px 20px rgba(180, 160, 130, 0.08) !important;
+}
+
+html.light[data-theme-preset="reading"] .tab-nav-btn.bg-brand-500,
+html.light[data-theme-preset="reading"] .theme-toggle-btn.bg-brand-500,
+html.light[data-theme-preset="reading"] .theme-preset-btn.bg-brand-500,
+html.light[data-theme-preset="reading"] button.bg-brand-500 {
+  background-color: #b45309 !important;
+  color: #ffffff !important;
+}
+
+html.light[data-theme-preset="reading"] [class*="bg-zinc-900/70"],
+html.light[data-theme-preset="reading"] [class*="bg-zinc-900/80"] {
+  background-color: #f6f1e8 !important;
+  border-color: #e5ddd0 !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   3. THÈME PERFORMANCE & CYBER (Typographie Tech, Jauges Néon & Glow)
+   -------------------------------------------------------------------------- */
+html[data-theme-preset="performance"] body,
+html[data-theme-preset="performance"] h1,
+html[data-theme-preset="performance"] h2,
+html[data-theme-preset="performance"] h3,
+html[data-theme-preset="performance"] h4,
+html[data-theme-preset="performance"] button,
+html[data-theme-preset="performance"] select,
+html[data-theme-preset="performance"] label {
+  font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif !important;
+}
+
+html[data-theme-preset="performance"] h1,
+html[data-theme-preset="performance"] h2,
+html[data-theme-preset="performance"] h3,
+html[data-theme-preset="performance"] h4 {
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+}
+
+/* Mode Sombre - Thème Performance */
+html.dark[data-theme-preset="performance"] body {
+  background-color: #07060f !important;
+}
+
+html.dark[data-theme-preset="performance"] .glass-card {
+  background: rgba(16, 12, 28, 0.88) !important;
+  border-color: rgba(236, 72, 153, 0.28) !important;
+  box-shadow: 0 0 25px rgba(236, 72, 153, 0.1) !important;
+}
+
+html.dark[data-theme-preset="performance"] .glass-card:hover {
+  border-color: rgba(236, 72, 153, 0.55) !important;
+  box-shadow: 0 0 30px rgba(236, 72, 153, 0.2) !important;
+}
+
+html.dark[data-theme-preset="performance"] .tab-nav-btn.bg-brand-500,
+html.dark[data-theme-preset="performance"] .theme-toggle-btn.bg-brand-500,
+html.dark[data-theme-preset="performance"] .theme-preset-btn.bg-brand-500,
+html.dark[data-theme-preset="performance"] button.bg-brand-500 {
+  background: linear-gradient(135deg, #ec4899, #8b5cf6) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px rgba(236, 72, 153, 0.35) !important;
+}
+
+html.dark[data-theme-preset="performance"] .text-brand-300,
+html.dark[data-theme-preset="performance"] .text-brand-400 {
+  color: #f472b6 !important;
+}
+
+/* Jauges Performance Néon */
+html.dark[data-theme-preset="performance"] [id$="-bar"] {
+  background: linear-gradient(90deg, #06b6d4, #ec4899, #facc15) !important;
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.5) !important;
+}
+
+/* Mode Clair - Thème Performance */
+html.light[data-theme-preset="performance"] body {
+  background-color: #f8fafc !important;
+}
+
+html.light[data-theme-preset="performance"] .glass-card {
+  background: #ffffff !important;
+  border-color: rgba(236, 72, 153, 0.25) !important;
+  box-shadow: 0 4px 18px rgba(236, 72, 153, 0.08) !important;
+}
+
+html.light[data-theme-preset="performance"] .tab-nav-btn.bg-brand-500,
+html.light[data-theme-preset="performance"] .theme-toggle-btn.bg-brand-500,
+html.light[data-theme-preset="performance"] .theme-preset-btn.bg-brand-500,
+html.light[data-theme-preset="performance"] button.bg-brand-500 {
+  background: linear-gradient(135deg, #db2777, #7c3aed) !important;
+  color: #ffffff !important;
+}
+
+html.light[data-theme-preset="performance"] [id$="-bar"] {
+  background: linear-gradient(90deg, #0284c7, #db2777) !important;
+}
+

@@ -1,0 +1,30 @@
+{
+  "name": "devhub-startpage-dashboard",
+  "version": "1.0.0",
+  "description": "Tableau de bord local et page d'accueil multi-OS (macOS, Windows, Linux) avec monitoring système, Docker, Ollama et Veille RSS",
+  "main": "server/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node --watch server/index.js",
+    "dev": "node --watch server/index.js",
+    "autostart:enable": "node scripts/autostart.js enable",
+    "autostart:disable": "node scripts/autostart.js disable",
+    "autostart:status": "node scripts/autostart.js status"
+  },
+  "keywords": [
+    "dashboard",
+    "startpage",
+    "multiplatform",
+    "system-monitor",
+    "docker",
+    "ollama",
+    "local-ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1"
+  }
+}

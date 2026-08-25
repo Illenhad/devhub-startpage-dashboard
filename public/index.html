@@ -1,0 +1,1473 @@
+<!doctype html>
+<html lang="fr" class="dark h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dev Hub — Page d'Accueil & Contrôle</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2'/><path d='M9 3v18'/><path d='m14 9 3 3-3 3'/></svg>" />
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300..800;1,300..800&family=Newsreader:ital,opsz,wght@0,6..72,300..800;1,6..72,300..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS (CDN avec Dark Mode support) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+              mono: ['"JetBrains Mono"', 'monospace']
+            },
+            colors: {
+              brand: {
+                50: '#eef2ff',
+                100: '#e0e7ff',
+                400: '#818cf8',
+                500: '#6366f1',
+                600: '#4f46e5',
+                700: '#4338ca',
+                950: '#0f0e26'
+              }
+            }
+          }
+        }
+      }
+    </script>
+    
+    <!-- Script d'application instantanée du thème (anti-flicker) -->
+    <script>
+      (function() {
+        const savedMode = localStorage.getItem('devhub_theme_mode') || localStorage.getItem('mac_theme_mode') || 'system';
+        const savedPreset = localStorage.getItem('devhub_theme_preset') || localStorage.getItem('mac_theme_preset') || 'standard';
+        const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const isDark = savedMode === 'dark' || (savedMode === 'system' && isSystemDark);
+        
+        document.documentElement.setAttribute('data-theme-preset', savedPreset);
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+          document.documentElement.classList.remove('light');
+        } else {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.classList.add('light');
+        }
+      })();
+    </script>
+    
+    <!-- Marked.js pour le rendu Markdown d'Ollama -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/css/styles.css?v=25" />
+  </head>
+
+  <body class="min-h-full bg-zinc-950 text-zinc-100 font-sans antialiased p-3 sm:p-4 lg:p-5 flex flex-col justify-between">
+    
+    <!-- CONTENEUR GLOBAL MAX-WIDTH OPTIMISÉ POUR 14" -->
+    <div class="max-w-[1480px] w-full mx-auto space-y-3.5 flex-1">
+      
+      <!-- ========================================== -->
+      <!-- 1. BARRE DE NAVIGATION SUPÉRIEURE (ONGLETS)-->
+      <!-- ========================================== -->
+      <nav class="flex items-center justify-between gap-2.5 border-b border-zinc-800/80 pb-3">
+        <!-- Logo & Titre -->
+        <div class="flex items-center gap-2 shrink-0">
+          <div class="w-8 h-8 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-brand-500/20 font-black text-sm">
+            D
+          </div>
+          <div>
+            <h1 class="font-bold text-xs sm:text-sm text-white tracking-tight leading-tight">Dev Hub</h1>
+            <p class="text-[9px] text-zinc-500 font-mono hidden sm:block">Contrôle Local & Startpage</p>
+          </div>
+        </div>
+
+        <!-- Onglets de Navigation Pleine Page -->
+        <div class="flex items-center bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 text-xs font-semibold shadow-inner shrink-0">
+          <button
+            data-tab-target="dashboard"
+            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 bg-brand-500 text-white shadow-sm font-bold text-xs"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            <span>Accueil</span>
+          </button>
+
+          <button
+            data-tab-target="system"
+            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+            <span>Système</span>
+          </button>
+
+          <button
+            data-tab-target="docker"
+            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            <span>Docker</span>
+          </button>
+
+          <button
+            data-tab-target="ollama"
+            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span>AI Studio</span>
+          </button>
+
+          <button
+            data-tab-target="rss"
+            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+            <span>Veille & RSS</span>
+            <span id="nav-rss-badge" class="hidden px-1.5 py-0.5 rounded-full bg-amber-500 text-black text-[9px] font-extrabold font-mono"></span>
+          </button>
+        </div>
+
+        <!-- Contrôles d'Apparence & Thèmes (Compact 1 Ligne) -->
+        <div class="flex items-center gap-1.5 shrink-0">
+          
+          <!-- Sélecteur d'Ambiance / Expérience (Standard, Code, Lecture, Performance) -->
+          <div class="flex items-center bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 text-xs font-semibold shadow-inner" title="Ambiance de travail & Typographie">
+            <button
+              data-theme-preset="standard"
+              onclick="window.setAppThemePreset('standard')"
+              class="theme-preset-btn px-2 py-1 rounded-xl flex items-center gap-1 transition-all text-xs cursor-pointer"
+              title="Thème Standard (Équilibré & Polyvalent)"
+            >
+              <span class="text-xs">🔷</span>
+              <span class="hidden xl:inline text-[10px]">Standard</span>
+            </button>
+
+            <button
+              data-theme-preset="code"
+              onclick="window.setAppThemePreset('code')"
+              class="theme-preset-btn px-2 py-1 rounded-xl flex items-center gap-1 transition-all text-xs cursor-pointer"
+              title="Thème Code & IDE (Typographie Monospace)"
+            >
+              <span class="text-xs">💻</span>
+              <span class="hidden xl:inline text-[10px]">Code</span>
+            </button>
+
+            <button
+              data-theme-preset="reading"
+              onclick="window.setAppThemePreset('reading')"
+              class="theme-preset-btn px-2 py-1 rounded-xl flex items-center gap-1 transition-all text-xs cursor-pointer"
+              title="Thème Lecture & Sérénité (Typographie Sérif Ambrée)"
+            >
+              <span class="text-xs">📖</span>
+              <span class="hidden xl:inline text-[10px]">Lecture</span>
+            </button>
+
+            <button
+              data-theme-preset="performance"
+              onclick="window.setAppThemePreset('performance')"
+              class="theme-preset-btn px-2 py-1 rounded-xl flex items-center gap-1 transition-all text-xs cursor-pointer"
+              title="Thème Performance & Cyber (Monitoring Néon)"
+            >
+              <span class="text-xs">⚡</span>
+              <span class="hidden xl:inline text-[10px]">Perfs</span>
+            </button>
+          </div>
+
+          <!-- Sélecteur de Mode Lumineux (Système, Clair, Sombre) -->
+          <div class="flex items-center bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 text-xs font-semibold shadow-inner">
+            <button
+              data-theme-btn="system"
+              onclick="window.setAppThemeMode('system')"
+              class="theme-toggle-btn p-1.5 rounded-xl flex items-center justify-center transition-all text-xs cursor-pointer"
+              title="Thème Système (Suit les réglages de votre OS)"
+            >
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            </button>
+
+            <button
+              data-theme-btn="light"
+              onclick="window.setAppThemeMode('light')"
+              class="theme-toggle-btn p-1.5 rounded-xl flex items-center justify-center transition-all text-xs cursor-pointer"
+              title="Mode Clair"
+            >
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+            </button>
+
+            <button
+              data-theme-btn="dark"
+              onclick="window.setAppThemeMode('dark')"
+              class="theme-toggle-btn p-1.5 rounded-xl flex items-center justify-center transition-all text-xs cursor-pointer"
+              title="Mode Sombre"
+            >
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+            </button>
+          </div>
+
+        </div>
+      </nav>
+
+
+      <!-- ========================================================= -->
+      <!-- VUE 1 : ACCUEIL / DASHBOARD (Vue Startpage Multi-Widget)   -->
+      <!-- ========================================================= -->
+      <div id="view-dashboard" class="app-view space-y-4 animate-fade-in">
+        <!-- Horloge & Recherche compacte -->
+        <header class="flex flex-col items-center justify-center space-y-2.5 pt-1 text-center">
+          <div class="space-y-0.5">
+            <h2 id="clock-time" class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white font-mono drop-shadow-sm">
+              00:00:00
+            </h2>
+            <p id="clock-date" class="text-xs font-medium text-zinc-400 capitalize">
+              Chargement...
+            </p>
+          </div>
+
+          <!-- Formulaire de recherche -->
+          <form id="startpage-search-form" class="w-full max-w-lg relative flex items-center">
+            <div class="relative w-full flex items-center">
+              <span class="absolute left-3.5 text-zinc-500">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              </span>
+              <input
+                id="startpage-search-input"
+                type="text"
+                autocomplete="off"
+                placeholder="Rechercher ou taper une URL... ('/')"
+                class="w-full pl-9 pr-24 py-2 rounded-2xl bg-zinc-900/90 border border-zinc-800 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-xs text-zinc-100 placeholder-zinc-500 outline-none transition-all shadow-md"
+              />
+              <div class="absolute right-2 flex items-center gap-1">
+                <select
+                  id="search-engine-select"
+                  class="text-[10px] font-semibold bg-zinc-800 text-zinc-300 rounded-xl px-2 py-1 border border-zinc-700 outline-none hover:bg-zinc-700 transition-colors cursor-pointer"
+                >
+                  <option value="startpage" selected>Startpage</option>
+                  <option value="google">Google</option>
+                  <option value="duckduckgo">DuckDuckGo</option>
+                  <option value="ecosia">Ecosia</option>
+                  <option value="qwant">Qwant</option>
+                  <option value="bing">Bing</option>
+                </select>
+              </div>
+            </div>
+          </form>
+        </header>
+
+        <!-- Grille des 4 Cartes Synthétiques Équilibrées -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5 items-stretch">
+          
+          <!-- MODULE 1 : INFOS SYSTÈME -->
+          <section class="flex flex-col glass-card rounded-3xl p-4 sm:p-4.5 shadow-xl space-y-3 justify-between">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+              <div class="flex items-center gap-2">
+                <div class="p-1.5 rounded-xl bg-indigo-500/10 text-indigo-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+                </div>
+                <div>
+                  <h3 id="sys-module-title" class="font-bold text-xs text-zinc-100">Système</h3>
+                  <p id="sys-arch" class="text-[9px] text-zinc-500 font-mono truncate max-w-[140px]">Détection...</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1">
+                <button
+                  id="sys-refresh-btn"
+                  class="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                  title="Actualiser"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                </button>
+                <button
+                  data-collapse-toggle="dash-sys-content"
+                  class="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                  title="Replier / Déplier"
+                >
+                  <svg class="w-3.5 h-3.5 collapse-chevron transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Contenu Repliable Système -->
+            <div id="dash-sys-content" class="space-y-3 flex-1 flex flex-col justify-between">
+              <!-- Jauges RAM & Disque compactes en 2 colonnes -->
+              <div class="grid grid-cols-2 gap-2">
+                <div class="p-2 rounded-2xl bg-zinc-900/70 border border-zinc-800 space-y-1 flex flex-col justify-between">
+                  <div class="flex items-center justify-between text-[10px]">
+                    <span class="font-bold text-zinc-200">RAM</span>
+                    <span id="ram-percent" class="font-mono font-bold text-indigo-400">--%</span>
+                  </div>
+                  <div class="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                    <div id="ram-bar" class="h-full bg-indigo-500 rounded-full transition-all duration-500 w-0"></div>
+                  </div>
+                  <div class="flex justify-between items-center text-[8px] text-zinc-400 font-mono">
+                    <span id="ram-used">--</span>
+                    <span id="ram-free" class="text-zinc-500">--</span>
+                  </div>
+                </div>
+
+                <div class="p-2 rounded-2xl bg-zinc-900/70 border border-zinc-800 space-y-1 flex flex-col justify-between">
+                  <div class="flex items-center justify-between text-[10px]">
+                    <span class="font-bold text-zinc-200">Disque</span>
+                    <span id="disk-percent" class="font-mono font-bold text-emerald-400">--%</span>
+                  </div>
+                  <div class="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                    <div id="disk-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-500 w-0"></div>
+                  </div>
+                  <div class="flex justify-between items-center text-[8px] text-zinc-400 font-mono">
+                    <span id="disk-used">--</span>
+                    <span id="disk-avail" class="text-zinc-500">--</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mini Badges Température, Uptime & CPU -->
+              <div class="grid grid-cols-3 gap-1.5 text-center">
+                <div class="p-1.5 rounded-xl bg-zinc-900/40 border border-zinc-800/60">
+                  <span class="text-[8px] text-zinc-500 uppercase font-semibold block">Temp.</span>
+                  <span id="sys-temp" class="font-mono font-bold text-emerald-400 text-[10px] block mt-0.5">-- °C</span>
+                </div>
+                <div class="p-1.5 rounded-xl bg-zinc-900/40 border border-zinc-800/60">
+                  <span class="text-[8px] text-zinc-500 uppercase font-semibold block">Uptime</span>
+                  <span id="sys-uptime" class="font-mono font-bold text-zinc-200 text-[10px] block mt-0.5 truncate">--</span>
+                </div>
+                <div class="p-1.5 rounded-xl bg-zinc-900/40 border border-zinc-800/60">
+                  <span class="text-[8px] text-zinc-500 uppercase font-semibold block">CPU</span>
+                  <span id="sys-cpu" class="font-mono font-bold text-zinc-200 text-[9px] block mt-0.5 truncate">--</span>
+                </div>
+              </div>
+
+              <!-- Bouton Accès Système & Auto-refresh -->
+              <div class="flex items-center gap-1.5 pt-0.5">
+                <button
+                  onclick="document.querySelector('[data-tab-target=\'system\']')?.click()"
+                  class="flex-1 py-2 px-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] font-semibold text-zinc-300 hover:text-white flex items-center justify-between transition-all group shadow-sm"
+                >
+                  <span>Détails Système</span>
+                  <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+
+                <div class="flex items-center bg-zinc-900/90 border border-zinc-800 rounded-2xl p-1 px-1.5 gap-1 shrink-0 text-[9px]" title="Auto-actualisation">
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input id="sys-auto-toggle" type="checkbox" class="sr-only peer">
+                    <div class="w-5 h-3 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:bg-brand-500"></div>
+                  </label>
+                  <span id="auto-refresh-indicator" class="hidden w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                  <select id="sys-interval-select" class="hidden"><option value="5">5s</option></select>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- MODULE 2 : GESTIONNAIRE DOCKER -->
+          <section class="flex flex-col glass-card rounded-3xl p-4 sm:p-4.5 shadow-xl space-y-3 justify-between">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+              <div class="flex items-center gap-2">
+                <div class="p-1.5 rounded-xl bg-sky-500/10 text-sky-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                </div>
+                <div>
+                  <h3 class="font-bold text-xs text-zinc-100">Docker</h3>
+                  <div id="docker-status-badge" class="flex items-center gap-1 mt-0.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-zinc-600"></span>
+                    <span class="text-[9px] text-zinc-400">Vérification...</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1">
+                <span id="docker-count-badge" class="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 font-semibold">
+                  --
+                </span>
+                <button
+                  id="docker-refresh-btn"
+                  class="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                  title="Actualiser"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                </button>
+                <button
+                  data-collapse-toggle="dash-docker-content"
+                  class="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                  title="Replier / Déplier"
+                >
+                  <svg class="w-3.5 h-3.5 collapse-chevron transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Contenu Repliable Docker -->
+            <div id="dash-docker-content" class="space-y-3 flex-1 flex flex-col justify-between">
+              <div class="py-6 text-center text-xs text-zinc-500">
+                Chargement des conteneurs...
+              </div>
+            </div>
+          </section>
+
+          <!-- MODULE 3 : OLLAMA AI -->
+          <section class="flex flex-col glass-card rounded-3xl p-4 sm:p-4.5 shadow-xl space-y-3 justify-between">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+              <div class="flex items-center gap-2">
+                <div class="p-1.5 rounded-xl bg-purple-500/10 text-purple-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <div>
+                  <h3 class="font-bold text-xs text-zinc-100">AI Studio</h3>
+                  <div id="ollama-status-badge" class="flex items-center gap-1 mt-0.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-zinc-600"></span>
+                    <span class="text-[9px] text-zinc-400">Vérification...</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                data-collapse-toggle="dash-ollama-content"
+                class="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                title="Replier / Déplier"
+              >
+                <svg class="w-3.5 h-3.5 collapse-chevron transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+            </div>
+
+            <!-- Contenu Repliable Synthèse Ollama -->
+            <div id="dash-ollama-content" class="space-y-3 flex-1 flex flex-col justify-between">
+              <div class="py-6 text-center text-xs text-zinc-500">
+                Vérification du statut...
+              </div>
+            </div>
+          </section>
+
+          <!-- MODULE 4 : VEILLE & FLUX RSS -->
+          <section class="flex flex-col glass-card rounded-3xl p-4 sm:p-4.5 shadow-xl space-y-3 justify-between">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+              <div class="flex items-center gap-2">
+                <div class="p-1.5 rounded-xl bg-amber-500/10 text-amber-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+                </div>
+                <div>
+                  <h3 class="font-bold text-xs text-zinc-100">Veille & RSS</h3>
+                  <p class="text-[9px] text-zinc-500 font-mono">Actualités & Mots-clés</p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1">
+                <span id="dash-rss-badge" class="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 font-semibold">
+                  --
+                </span>
+                <button
+                  id="dash-rss-refresh-btn"
+                  class="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                  title="Actualiser"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                </button>
+                <button
+                  data-collapse-toggle="dash-rss-content"
+                  class="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                  title="Replier / Déplier"
+                >
+                  <svg class="w-3.5 h-3.5 collapse-chevron transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Contenu Repliable Synthèse RSS -->
+            <div id="dash-rss-content" class="space-y-3 flex-1 flex flex-col justify-between">
+              <div class="py-6 text-center text-xs text-zinc-500">
+                Chargement de la veille...
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+
+      <!-- ========================================================= -->
+      <!-- VUE 2 : SYSTÈME PLEINE PAGE (RAM, Processus & Disques)    -->
+      <!-- ========================================================= -->
+      <div id="view-system" class="app-view hidden space-y-6 animate-fade-in">
+        
+        <!-- SECTION 1 : DÉTAIL DE LA MÉMOIRE RAM & COMPOSITION -->
+        <section class="glass-card rounded-3xl p-6 shadow-xl space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+            <div>
+              <h2 id="full-sys-header-title" class="text-lg font-bold text-white flex items-center gap-2">
+                <span class="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+                </span>
+                Architecture & Répartition de la Mémoire RAM
+              </h2>
+              <p class="text-xs text-zinc-400 mt-1">
+                Composition et occupation de la mémoire physique du système
+              </p>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="flex items-center gap-2">
+                <span id="full-ram-percent" class="font-mono text-2xl font-black text-indigo-400">--%</span>
+                <span class="text-xs text-zinc-500 uppercase font-semibold">Utilisé</span>
+              </div>
+              <!-- Bouton Replier/Déplier -->
+              <button
+                data-collapse-toggle="full-ram-content"
+                class="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                title="Replier / Déplier la section"
+              >
+                <svg class="w-4 h-4 collapse-chevron transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Contenu Repliable RAM -->
+          <div id="full-ram-content" class="space-y-4 pt-1">
+            <!-- Jauge RAM globale -->
+            <div class="space-y-2">
+              <div class="w-full bg-zinc-800/80 h-3 rounded-full overflow-hidden p-0.5">
+                <div id="full-ram-bar" class="h-full bg-indigo-500 rounded-full transition-all duration-500 w-0"></div>
+              </div>
+              <div class="flex justify-between items-center text-xs font-mono text-zinc-400">
+                <span>Capacité Totale : <strong id="full-ram-total" class="text-white">-- Go</strong></span>
+                <span>Mémoire Libre / Cache : <strong id="full-ram-free-summary" class="text-emerald-400">-- Go</strong></span>
+              </div>
+            </div>
+
+            <!-- 4 Badges de composition RAM -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              <div class="p-3.5 rounded-2xl bg-zinc-900/60 border border-zinc-800">
+                <span class="text-[11px] text-zinc-400 font-medium block">Mémoire Active</span>
+                <span id="full-ram-active" class="font-mono text-base font-bold text-zinc-100 mt-1 block">-- Go</span>
+                <span class="text-[10px] text-zinc-500 block mt-0.5">Utilisée par les apps</span>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-zinc-900/60 border border-zinc-800">
+                <span class="text-[11px] text-zinc-400 font-medium block">Mémoire Câblée (Wired)</span>
+                <span id="full-ram-wired" class="font-mono text-base font-bold text-amber-400 mt-1 block">-- Go</span>
+                <span class="text-[10px] text-zinc-500 block mt-0.5">Verrouillée par l'OS</span>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-zinc-900/60 border border-zinc-800">
+                <span class="text-[11px] text-zinc-400 font-medium block">Compressée (RAM)</span>
+                <span id="full-ram-compressed" class="font-mono text-base font-bold text-indigo-400 mt-1 block">-- Go</span>
+                <span class="text-[10px] text-zinc-500 block mt-0.5">Optimisation système</span>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-zinc-900/60 border border-zinc-800">
+                <span class="text-[11px] text-zinc-400 font-medium block">Libre Immédiate</span>
+                <span id="full-ram-free-badge" class="font-mono text-base font-bold text-emerald-400 mt-1 block">-- Go</span>
+                <span class="text-[10px] text-zinc-500 block mt-0.5">Disponible sans délai</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- SECTION 2 : TOUS LES DISQUES & VOLUMES MONTÉS -->
+        <section class="glass-card rounded-3xl p-6 shadow-xl space-y-4">
+          <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+            <div class="flex items-center gap-2.5">
+              <div class="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7c-2 0-3 1-3 3zm0 5h16"/></svg>
+              </div>
+              <div>
+                <h3 class="font-bold text-sm text-zinc-100">Stockage & Volumes Montés</h3>
+                <p class="text-[11px] text-zinc-400">Disque interne, partitions système et périphériques externes</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button
+                id="full-disks-refresh-btn"
+                class="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                title="Actualiser les disques"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              </button>
+              <!-- Bouton Replier/Déplier -->
+              <button
+                data-collapse-toggle="full-disks-content"
+                class="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                title="Replier / Déplier la section"
+              >
+                <svg class="w-4 h-4 collapse-chevron transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Contenu Repliable Disques -->
+          <div id="full-disks-content">
+            <div id="full-disks-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div class="py-6 text-center text-xs text-zinc-500 col-span-full">
+                Chargement des volumes...
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- SECTION 3 : GESTIONNAIRE DE PROCESSUS (TRIABLE) -->
+        <section class="glass-card rounded-3xl p-6 shadow-xl space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="font-bold text-base text-zinc-100">Processus en Cours d'Exécution</h3>
+                <span id="full-proc-count-badge" class="px-2 py-0.5 rounded-full bg-zinc-800 text-[11px] font-mono text-zinc-400 font-semibold">
+                  -- processus
+                </span>
+              </div>
+              <p class="text-xs text-zinc-400 mt-0.5">
+                Cliquez sur les colonnes pour trier par RAM, CPU, Nom ou Uptime
+              </p>
+            </div>
+
+            <!-- Contrôles et Filtres -->
+            <div class="flex items-center flex-wrap gap-2.5">
+              <!-- Champ recherche -->
+              <div class="relative w-48 sm:w-60">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </span>
+                <input
+                  id="full-proc-search"
+                  type="text"
+                  placeholder="Filtrer par nom, PID..."
+                  class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 placeholder-zinc-500 focus:border-brand-500 outline-none"
+                />
+              </div>
+
+              <!-- Limite -->
+              <select
+                id="full-proc-limit"
+                class="px-2.5 py-1.5 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 outline-none cursor-pointer"
+              >
+                <option value="25">Top 25</option>
+                <option value="50" selected>Top 50</option>
+                <option value="100">Top 100</option>
+                <option value="all">Tous</option>
+              </select>
+
+              <!-- Auto-refresh -->
+              <label class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-400 cursor-pointer">
+                <input id="full-proc-auto-toggle" type="checkbox" class="accent-brand-500" />
+                <span>Auto-refresh (3s)</span>
+              </label>
+
+              <!-- Bouton refresh -->
+              <button
+                id="full-proc-refresh-btn"
+                class="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                title="Actualiser les processus"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              </button>
+
+              <!-- Bouton Replier/Déplier -->
+              <button
+                data-collapse-toggle="full-procs-content"
+                class="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                title="Replier / Déplier la section"
+              >
+                <svg class="w-4 h-4 collapse-chevron transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Contenu Repliable Processus -->
+          <div id="full-procs-content">
+            <div class="overflow-x-auto max-h-[500px] overflow-y-auto pr-1">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead class="sticky top-0 bg-zinc-900 border-b border-zinc-800 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider z-10">
+                  <tr>
+                    <th data-sort-col="pid" class="py-2.5 px-3 cursor-pointer hover:text-zinc-200 transition-colors w-20">
+                      PID <span class="sort-arrow">↕</span>
+                    </th>
+                    <th data-sort-col="name" class="py-2.5 px-3 cursor-pointer hover:text-zinc-200 transition-colors">
+                      Nom du Processus & Commande <span class="sort-arrow">↕</span>
+                    </th>
+                    <th data-sort-col="user" class="py-2.5 px-3 cursor-pointer hover:text-zinc-200 transition-colors w-24">
+                      Utilisateur <span class="sort-arrow">↕</span>
+                    </th>
+                    <th data-sort-col="cpu" class="py-2.5 px-3 cursor-pointer hover:text-zinc-200 transition-colors text-right w-28">
+                      % CPU <span class="sort-arrow">↕</span>
+                    </th>
+                    <th data-sort-col="mem" class="py-2.5 px-3 cursor-pointer hover:text-zinc-200 transition-colors text-right w-36">
+                      Mémoire RAM <span class="sort-arrow text-brand-400 font-bold ml-1">↓</span>
+                    </th>
+                    <th data-sort-col="uptime" class="py-2.5 px-3 cursor-pointer hover:text-zinc-200 transition-colors text-right w-28">
+                      Uptime <span class="sort-arrow">↕</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="full-proc-table-body" class="divide-y divide-zinc-800/40">
+                  <tr>
+                    <td colSpan="6" class="py-12 text-center text-xs text-zinc-500">
+                      Chargement des processus...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- SECTION 4 : ANALYSEUR DES FICHIERS LES PLUS LOURDS -->
+        <section class="glass-card rounded-3xl p-6 shadow-xl space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+            <div>
+              <h3 class="font-bold text-base text-zinc-100 flex items-center gap-2">
+                <span class="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                </span>
+                Fichiers les Plus Volumineux (Dossier Personnel)
+              </h3>
+              <p class="text-xs text-zinc-400 mt-0.5">
+                Détection instantanée via Spotlight des fichiers consommant le plus de stockage
+              </p>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <div class="flex items-center gap-1.5 text-xs text-zinc-400">
+                <span>Taille min :</span>
+                <select
+                  id="full-heavy-min-select"
+                  class="px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 outline-none cursor-pointer text-xs"
+                >
+                  <option value="100" selected>> 100 Mo</option>
+                  <option value="250">> 250 Mo</option>
+                  <option value="500">> 500 Mo</option>
+                  <option value="1000">> 1 Go</option>
+                </select>
+              </div>
+
+              <button
+                id="full-heavy-refresh-btn"
+                class="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                title="Actualiser la liste des gros fichiers"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              </button>
+
+              <!-- Bouton Replier/Déplier -->
+              <button
+                data-collapse-toggle="full-heavy-content"
+                class="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                title="Replier / Déplier la section"
+              >
+                <svg class="w-4 h-4 collapse-chevron transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Contenu Repliable Gros Fichiers -->
+          <div id="full-heavy-content">
+            <div class="overflow-x-auto max-h-[400px] overflow-y-auto pr-1">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead class="sticky top-0 bg-zinc-900 border-b border-zinc-800 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider z-10">
+                  <tr>
+                    <th class="py-2.5 px-3">Nom & Chemin du Fichier</th>
+                    <th class="py-2.5 px-3 text-right w-28">Taille</th>
+                    <th class="py-2.5 px-3 text-right w-28">Modifié le</th>
+                    <th class="py-2.5 px-3 text-right w-24">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="full-heavy-table-body" class="divide-y divide-zinc-800/40">
+                  <tr>
+                    <td colSpan="4" class="py-8 text-center text-xs text-zinc-500">
+                      Recherche des fichiers volumineux...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+
+      <!-- ========================================================= -->
+      <!-- VUE 3 : DOCKER STUDIO (PLEINE PAGE)                       -->
+      <!-- ========================================================= -->
+      <div id="view-docker" class="app-view hidden space-y-6 animate-fade-in">
+        
+        <!-- En-tête & Barre de Contrôle Docker -->
+        <section class="glass-card rounded-3xl p-6 shadow-xl space-y-5">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+            <div class="flex items-center gap-3">
+              <div class="p-3 rounded-2xl bg-sky-500/10 text-sky-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+              </div>
+              <div>
+                <h2 class="font-bold text-lg text-white">Gestionnaire de Conteneurs Docker</h2>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <div id="full-docker-status-badge" class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-zinc-600"></span>
+                    <span class="text-xs text-zinc-400">Vérification...</span>
+                  </div>
+                  <span class="text-zinc-600">•</span>
+                  <span id="full-docker-count-badge" class="text-xs font-mono text-zinc-400 font-semibold">--</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Barre de Recherche & Actions Globales -->
+            <div class="flex items-center flex-wrap gap-2.5">
+              <div class="relative w-48 sm:w-60">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </span>
+                <input
+                  id="full-docker-search"
+                  type="text"
+                  placeholder="Rechercher conteneur, image..."
+                  class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 placeholder-zinc-500 focus:border-brand-500 outline-none"
+                />
+              </div>
+
+              <!-- Filtres État -->
+              <div class="flex items-center bg-zinc-900 p-1 rounded-xl border border-zinc-800 text-xs">
+                <button data-docker-filter="all" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-brand-500 text-white shadow-sm transition-all">
+                  Tous
+                </button>
+                <button data-docker-filter="running" class="px-3 py-1.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-all">
+                  Actifs
+                </button>
+                <button data-docker-filter="stopped" class="px-3 py-1.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-all">
+                  Arrêtés
+                </button>
+              </div>
+
+              <!-- Nettoyer conteneurs arrêtés (Prune) -->
+              <button
+                id="full-docker-prune-btn"
+                class="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-rose-400 text-xs font-semibold flex items-center gap-1.5 transition-all"
+                title="Supprimer tous les conteneurs arrêtés"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                <span>Nettoyer</span>
+              </button>
+
+              <!-- Bouton Actualiser -->
+              <button
+                id="full-docker-refresh-btn"
+                class="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                title="Actualiser les conteneurs"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Grille des Cartes de Conteneurs -->
+          <div id="full-docker-containers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div class="col-span-full py-16 text-center text-xs text-zinc-500">
+              Chargement des conteneurs Docker...
+            </div>
+          </div>
+        </section>
+
+        <!-- Fenêtre Modale de Logs en Direct -->
+        <div id="docker-log-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+          <div class="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <!-- Header Modal -->
+            <div class="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
+              <div class="flex items-center gap-2.5">
+                <div class="p-1.5 rounded-lg bg-sky-500/10 text-sky-400 font-mono text-xs font-bold">
+                  LOGS
+                </div>
+                <h3 id="docker-log-modal-title" class="font-bold text-sm text-white font-mono truncate max-w-lg">
+                  Logs du conteneur
+                </h3>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <!-- Sélecteur de Lignes -->
+                <select id="docker-log-modal-tail" class="text-[11px] bg-zinc-900 text-zinc-300 rounded-lg px-2 py-1 border border-zinc-700 outline-none">
+                  <option value="50">50 lignes</option>
+                  <option value="150" selected>150 lignes</option>
+                  <option value="500">500 lignes</option>
+                  <option value="1000">1000 lignes</option>
+                </select>
+
+                <!-- Auto-refresh -->
+                <label class="flex items-center gap-1.5 text-xs text-zinc-400 cursor-pointer">
+                  <input id="docker-log-modal-auto" type="checkbox" checked class="accent-brand-500" />
+                  <span>Live (2.5s)</span>
+                </label>
+
+                <!-- Copier -->
+                <button id="docker-log-modal-copy" class="px-2.5 py-1 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all">
+                  Copier
+                </button>
+
+                <!-- Fermer -->
+                <button id="docker-log-modal-close" class="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Corps des logs -->
+            <pre id="docker-log-modal-body" class="flex-1 p-4 bg-zinc-950 font-mono text-[11px] text-zinc-300 overflow-y-auto leading-relaxed whitespace-pre-wrap select-text"></pre>
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- ========================================================= -->
+      <!-- VUE 4 : OLLAMA AI STUDIO (PLEINE PAGE)                    -->
+      <!-- ========================================================= -->
+      <div id="view-ollama" class="app-view hidden space-y-6 animate-fade-in">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          <!-- SIDEBAR GAUCHE : MODÈLES, PERSONAS & SESSIONS (4 cols) -->
+          <aside class="lg:col-span-4 space-y-4">
+            
+            <!-- Carte Configuration Modèle & Persona -->
+            <div class="glass-card rounded-3xl p-5 shadow-xl space-y-4">
+              <!-- En-tête Sidebar -->
+              <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+                <div class="flex items-center gap-2.5">
+                  <div class="p-2 rounded-xl bg-purple-500/10 text-purple-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-sm text-white">AI Studio</h3>
+                    <div id="full-ollama-status-badge" class="flex items-center gap-1.5 mt-0.5">
+                      <span class="w-2 h-2 rounded-full bg-zinc-600"></span>
+                      <span class="text-[11px] text-zinc-400">Détection...</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sélecteur de Modèle -->
+              <div class="space-y-1.5">
+                <label class="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  Modèle Local Actif
+                </label>
+                <select
+                  id="full-ollama-model"
+                  class="w-full px-3 py-2 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 focus:border-brand-500 outline-none font-mono cursor-pointer"
+                >
+                  <option value="">Chargement des modèles...</option>
+                </select>
+                <div id="full-ollama-model-details" class="flex flex-wrap gap-1.5 pt-1"></div>
+              </div>
+
+              <!-- Sélecteur de Persona / Mode -->
+              <div class="space-y-1.5">
+                <label class="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  Rôle / Persona
+                </label>
+                <select
+                  id="full-ollama-persona"
+                  class="w-full px-3 py-2 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 focus:border-brand-500 outline-none cursor-pointer"
+                >
+                  <option value="general" selected>⚡ Assistant Général</option>
+                  <option value="coder">💻 Expert Code & Architecture</option>
+                  <option value="writer">📝 Rédacteur & Synthèse</option>
+                  <option value="devops">🛠️ DevOps & Terminal</option>
+                  <option value="custom">⚙️ Personnalisé (Prompt sur-mesure)</option>
+                </select>
+              </div>
+
+              <!-- System Prompt Personnalisé -->
+              <div id="full-ollama-custom-system-container" class="hidden space-y-1.5">
+                <label class="block text-[11px] font-semibold text-zinc-400">
+                  Instruction Système (System Prompt)
+                </label>
+                <textarea
+                  id="full-ollama-custom-system"
+                  rows="3"
+                  placeholder="Tu es un assistant spécialisé dans..."
+                  class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:border-brand-500 outline-none resize-none font-mono"
+                ></textarea>
+              </div>
+
+              <!-- Paramètre Température -->
+              <div class="space-y-2 pt-2 border-t border-zinc-800/80">
+                <div class="flex justify-between items-center text-xs">
+                  <span class="text-zinc-400 font-medium">Créativité (Température)</span>
+                  <span id="full-ollama-temp-value" class="font-mono font-bold text-indigo-400">0.70</span>
+                </div>
+                <input
+                  id="full-ollama-temp"
+                  type="range"
+                  min="0.0"
+                  max="1.5"
+                  step="0.05"
+                  value="0.70"
+                  class="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-brand-500"
+                />
+                <div class="flex justify-between text-[10px] text-zinc-500 font-mono">
+                  <span>Précis (0.0)</span>
+                  <span>Équilibré (0.7)</span>
+                  <span>Créatif (1.5)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Carte Historique des Conversations -->
+            <div class="glass-card rounded-3xl p-5 shadow-xl space-y-3">
+              <div class="flex items-center justify-between border-b border-zinc-800 pb-2.5">
+                <span class="text-xs font-bold text-zinc-300 uppercase tracking-wider">Conversations</span>
+                <div class="flex items-center gap-1.5">
+                  <button
+                    id="full-ollama-new-chat-btn"
+                    class="px-2.5 py-1 rounded-xl bg-brand-500/20 hover:bg-brand-500/30 text-brand-300 text-xs font-semibold flex items-center gap-1 transition-all"
+                  >
+                    <span>+ Nouvelle</span>
+                  </button>
+                  <button
+                    id="full-ollama-clear-all-btn"
+                    class="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-zinc-800 transition-all text-xs"
+                    title="Effacer tout l'historique"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Liste des discussions récentes -->
+              <div id="full-ollama-sessions-list" class="space-y-1 max-h-56 overflow-y-auto pr-1">
+                <div class="p-4 text-center text-xs text-zinc-500">
+                  Aucune conversation récente
+                </div>
+              </div>
+            </div>
+
+          </aside>
+
+
+          <!-- FENÊTRE DE CHAT PRINCIPALE (8 cols) -->
+          <main class="lg:col-span-8 flex flex-col glass-card rounded-3xl shadow-xl h-[720px] overflow-hidden border border-zinc-800">
+            
+            <!-- Header du Chat -->
+            <div class="flex items-center justify-between p-4 border-b border-zinc-800/80 bg-zinc-900/60 backdrop-blur">
+              <div class="flex items-center gap-2.5">
+                <div class="w-3 h-3 rounded-full bg-brand-500 animate-pulse"></div>
+                <div>
+                  <h3 class="font-bold text-sm text-white">Discussion IA Interactive</h3>
+                  <p class="text-[10px] text-zinc-400 font-mono">Modèle local avec mémoire multi-tours</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Flux des Messages -->
+            <div id="full-ollama-messages" class="flex-1 p-5 overflow-y-auto space-y-4 bg-zinc-950/40">
+              <!-- État Vide avec Suggestions -->
+              <div id="full-ollama-empty-state" class="flex flex-col items-center justify-center h-full text-center p-6 space-y-6">
+                <div class="w-16 h-16 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-3xl shadow-lg shadow-purple-500/5">
+                  🦙
+                </div>
+                <div class="space-y-1.5 max-w-sm">
+                  <h4 class="font-bold text-base text-zinc-100">AI Studio</h4>
+                  <p class="text-xs text-zinc-400 leading-relaxed">
+                    Posez vos questions, générez du code ou brainstormez en local avec vos modèles LLM.
+                  </p>
+                </div>
+
+                <!-- Suggestions Rapides -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-md pt-2 text-left">
+                  <button
+                    data-ollama-suggestion="Explique-moi la différence entre les architectures ARM64 et x86_64"
+                    class="p-3 rounded-2xl bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 text-xs text-zinc-300 hover:text-white transition-all text-left group"
+                  >
+                    <span class="font-semibold text-brand-400 block group-hover:underline">Architecture CPU</span>
+                    <span class="text-[11px] text-zinc-500 block truncate">Différence ARM64 vs x86_64</span>
+                  </button>
+
+                  <button
+                    data-ollama-suggestion="Écris un script bash pour automatiser la rotation des logs applicatifs"
+                    class="p-3 rounded-2xl bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 text-xs text-zinc-300 hover:text-white transition-all text-left group"
+                  >
+                    <span class="font-semibold text-emerald-400 block group-hover:underline">Script Bash</span>
+                    <span class="text-[11px] text-zinc-500 block truncate">Rotation et purge des logs</span>
+                  </button>
+
+                  <button
+                    data-ollama-suggestion="Génère un exemple de serveur Node.js Express avec streaming SSE"
+                    class="p-3 rounded-2xl bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 text-xs text-zinc-300 hover:text-white transition-all text-left group"
+                  >
+                    <span class="font-semibold text-indigo-400 block group-hover:underline">Code Node.js</span>
+                    <span class="text-[11px] text-zinc-500 block truncate">Serveur Express avec SSE</span>
+                  </button>
+
+                  <button
+                    data-ollama-suggestion="Quelles sont les meilleures pratiques pour sécuriser un conteneur Docker ?"
+                    class="p-3 rounded-2xl bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 text-xs text-zinc-300 hover:text-white transition-all text-left group"
+                  >
+                    <span class="font-semibold text-amber-400 block group-hover:underline">Sécurité Docker</span>
+                    <span class="text-[11px] text-zinc-500 block truncate">Bonnes pratiques conteneurs</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Barre de Saisie Fixe en Bas -->
+            <div class="p-4 border-t border-zinc-800/80 bg-zinc-900/90 backdrop-blur space-y-2">
+              <div class="relative flex items-end gap-2 bg-zinc-950/80 border border-zinc-800 rounded-2xl p-2 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition-all shadow-inner">
+                <textarea
+                  id="full-ollama-prompt-input"
+                  rows="2"
+                  placeholder="Posez votre question à Ollama... (Entrée pour envoyer, Maj+Entrée pour nouvelle ligne)"
+                  class="w-full p-2 bg-transparent text-xs text-zinc-100 placeholder-zinc-500 outline-none resize-none max-h-44"
+                ></textarea>
+
+                <div class="flex items-center gap-1.5 shrink-0 pb-1">
+                  <!-- Bouton Stop (masqué par défaut) -->
+                  <button
+                    id="full-ollama-stop-btn"
+                    class="hidden px-3.5 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 font-bold text-xs flex items-center gap-1 transition-all border border-rose-500/30 active:scale-95"
+                    title="Arrêter la réponse"
+                  >
+                    <span class="w-2 h-2 rounded-sm bg-rose-400"></span>
+                    <span>Stop</span>
+                  </button>
+
+                  <!-- Bouton Envoyer -->
+                  <button
+                    id="full-ollama-send-btn"
+                    class="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-brand-500/20 transition-all"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    <span>Envoyer</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between text-[10px] text-zinc-500 px-1">
+                <span>↵ Entrée pour valider • ⇧↵ Maj+Entrée pour saut de ligne</span>
+                <span id="full-ollama-char-count" class="font-mono">0 caractères</span>
+              </div>
+            </div>
+
+          </main>
+
+        </div>
+      </div>
+
+
+      <!-- ========================================================= -->
+      <!-- VUE 5 : VEILLE TECHNOLOGIQUE & FLUX RSS (PLEINE PAGE)      -->
+      <!-- ========================================================= -->
+      <div id="view-rss" class="app-view hidden space-y-6 animate-fade-in">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          <!-- SIDEBAR GAUCHE : MOTS-CLÉS DE VEILLE & SOURCES RSS (4 cols) -->
+          <aside class="lg:col-span-4 space-y-4">
+            
+            <!-- Carte Veille & Flux RSS -->
+            <div class="glass-card rounded-3xl p-5 shadow-xl space-y-4">
+              
+              <!-- En-tête Sidebar -->
+              <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+                <div class="flex items-center gap-2.5">
+                  <div class="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-sm text-white">Veille & Sources</h3>
+                    <p class="text-[10px] text-zinc-400">Mots-clés & flux automatisés</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Option 1 : Flux Global Unifié (Tout afficher) -->
+              <div
+                id="full-watch-all-btn"
+                onclick="window.rssFullWidget.selectUnified()"
+                class="group flex items-center justify-between p-3 rounded-2xl cursor-pointer transition-all bg-brand-500/15 border border-brand-500/30 text-white font-medium shadow-sm"
+              >
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <span class="text-base shrink-0">🌟</span>
+                  <div class="min-w-0">
+                    <span class="text-xs font-bold block text-brand-300">
+                      Tous les articles (Flux + Veille)
+                    </span>
+                    <span id="full-watch-all-subtitle" class="text-[10px] text-zinc-400 block truncate font-mono">
+                      Flux global agrégé
+                    </span>
+                  </div>
+                </div>
+                <span id="full-watch-all-badge" class="px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black font-mono">
+                  --
+                </span>
+              </div>
+
+              <!-- Section 1 : Mots-clés de Veille -->
+              <div class="space-y-2 pt-2 border-t border-zinc-800/80">
+                <div class="flex items-center justify-between px-1">
+                  <span class="text-[11px] font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>🎯</span>
+                    <span>Sujets de Veille</span>
+                  </span>
+                  <span class="text-[10px] text-zinc-500 font-mono">Google News FR</span>
+                </div>
+
+                <!-- Liste des Mots-clés -->
+                <div id="full-watch-keywords-list" class="space-y-1 max-h-48 overflow-y-auto pr-1">
+                  <div class="p-2 text-center text-xs text-zinc-500">
+                    Chargement des mots-clés...
+                  </div>
+                </div>
+
+                <!-- Formulaire d'Ajout de Mot-clé -->
+                <form id="full-watch-add-form" class="flex items-center gap-1.5 pt-1">
+                  <input
+                    id="full-watch-add-keyword"
+                    type="text"
+                    required
+                    placeholder="+ Nouveau mot-clé (ex: ia agentique, rust, bun)..."
+                    class="flex-1 px-3 py-1.5 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 placeholder-zinc-500 focus:border-purple-500 outline-none"
+                  />
+                  <button
+                    type="submit"
+                    class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white transition-all shrink-0"
+                    title="Ajouter ce sujet de veille"
+                  >
+                    Ajouter
+                  </button>
+                </form>
+              </div>
+
+              <!-- Section 2 : Flux RSS Suivis -->
+              <div class="space-y-2 pt-2 border-t border-zinc-800/80">
+                <div class="flex items-center justify-between px-1">
+                  <span class="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>📡</span>
+                    <span>Flux RSS Suivis</span>
+                  </span>
+                </div>
+
+                <!-- Liste des Flux RSS -->
+                <div id="full-rss-feeds-list" class="space-y-1 max-h-48 overflow-y-auto pr-1">
+                  <div class="p-2 text-center text-xs text-zinc-500">
+                    Chargement des flux...
+                  </div>
+                </div>
+
+                <!-- Formulaire d'Ajout d'un Flux RSS -->
+                <form id="full-rss-add-form" class="space-y-2 pt-1">
+                  <input
+                    id="full-rss-add-name"
+                    type="text"
+                    placeholder="Nom du site (ex: Numerama)"
+                    class="w-full px-3 py-1.5 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 placeholder-zinc-500 focus:border-brand-500 outline-none"
+                  />
+                  <div class="flex items-center gap-1.5">
+                    <input
+                      id="full-rss-add-url"
+                      type="url"
+                      required
+                      placeholder="URL RSS (https://.../feed)"
+                      class="flex-1 px-3 py-1.5 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 placeholder-zinc-500 focus:border-brand-500 outline-none font-mono text-[11px]"
+                    />
+                    <button
+                      type="submit"
+                      class="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-200 hover:text-white transition-all shrink-0"
+                    >
+                      Ajouter
+                    </button>
+                  </div>
+                </form>
+
+                <!-- Lien Réinitialiser -->
+                <div class="pt-2 text-center">
+                  <button
+                    onclick="window.rssFullWidget.resetDefaultAll()"
+                    class="text-[10px] text-zinc-500 hover:text-brand-400 transition-colors"
+                  >
+                    ↺ Réinitialiser flux & mots-clés par défaut
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+          </aside>
+
+
+          <!-- FLUX DES ARTICLES (8 cols) -->
+          <main class="lg:col-span-8 flex flex-col space-y-4">
+            
+            <!-- En-tête du flux actif, Filtres & Actions -->
+            <div class="glass-card rounded-3xl p-5 shadow-xl space-y-4">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-3">
+                <div>
+                  <h3 id="full-rss-feed-title" class="font-bold text-base text-white flex items-center gap-2">
+                    <span>🌟</span>
+                    <span>Tous les articles (Flux & Veille)</span>
+                  </h3>
+                  <p id="full-rss-feed-desc" class="text-xs text-zinc-400 mt-0.5 max-w-lg truncate">
+                    Flux unifié d'actualités technologiques et surveillance par mots-clés
+                  </p>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                  <!-- Bouton Tout Marquer comme Lu -->
+                  <button
+                    id="full-rss-mark-all-read-btn"
+                    class="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+                    title="Tout marquer comme lu"
+                  >
+                    <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span>Tout marquer lu</span>
+                  </button>
+
+                  <!-- Bouton Restaurer Articles Supprimés -->
+                  <button
+                    id="full-rss-restore-deleted-btn"
+                    class="hidden px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-all"
+                    title="Restaurer les articles supprimés"
+                  >
+                    <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <span id="full-rss-restore-text">Restaurer masqués</span>
+                  </button>
+
+                  <!-- Bouton Actualiser -->
+                  <button
+                    id="full-rss-refresh-btn"
+                    class="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                    title="Actualiser le flux actif"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Barre Filtres & Recherche -->
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                <!-- Filtres par statut de lecture -->
+                <div class="flex items-center bg-zinc-900 p-1 rounded-xl border border-zinc-800 text-xs">
+                  <button data-rss-filter="all" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-brand-500 text-white shadow-sm transition-all">
+                    Tous
+                  </button>
+                  <button data-rss-filter="unread" class="px-3 py-1.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-all">
+                    Non lus
+                  </button>
+                  <button data-rss-filter="read" class="px-3 py-1.5 rounded-xl text-xs font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-all">
+                    Lus
+                  </button>
+                </div>
+
+                <div class="flex items-center gap-2.5">
+                  <!-- Champ recherche -->
+                  <div class="relative w-full sm:w-56">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </span>
+                    <input
+                      id="full-rss-search"
+                      type="text"
+                      placeholder="Filtrer les articles..."
+                      class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 placeholder-zinc-500 focus:border-brand-500 outline-none"
+                    />
+                  </div>
+
+                  <span id="full-rss-count-badge" class="px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono text-[11px] font-semibold shrink-0">
+                    -- articles
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Grille des Articles -->
+            <div id="full-rss-articles-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="col-span-full py-20 text-center text-xs text-zinc-500">
+                Chargement des actualités et de la veille...
+              </div>
+            </div>
+
+          </main>
+
+        </div>
+
+        <!-- Modale de Lecture Complète d'Article via Flux RSS & Veille -->
+        <div id="rss-reader-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 animate-fade-in">
+          <div class="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            
+            <!-- En-tête de la modale de lecture -->
+            <div class="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur gap-3">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-300 font-mono text-[10px] font-bold">
+                    LECTEUR RSS
+                  </span>
+                  <p id="rss-reader-modal-meta" class="text-[11px] text-zinc-400 truncate"></p>
+                </div>
+                <h3 id="rss-reader-modal-title" class="font-bold text-sm sm:text-base text-white mt-1 leading-snug">
+                  Titre de l'article
+                </h3>
+              </div>
+
+              <!-- Contrôles de navigation & Fermeture -->
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button
+                  id="rss-reader-modal-prev"
+                  class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all"
+                  title="Article précédent (Flèche Gauche)"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+
+                <button
+                  id="rss-reader-modal-next"
+                  class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all"
+                  title="Article suivant (Flèche Droite)"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+
+                <button
+                  id="rss-reader-modal-close"
+                  class="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all ml-1"
+                  title="Fermer (Échap)"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Corps de l'article avec texte complet et images -->
+            <div id="rss-reader-modal-body" class="p-6 sm:p-8 overflow-y-auto text-sm text-zinc-200 leading-relaxed markdown-body max-h-[calc(90vh-140px)]"></div>
+
+            <!-- Pied de page de lecture -->
+            <div class="p-3 px-6 border-t border-zinc-800/80 bg-zinc-950/80 flex items-center justify-between text-xs text-zinc-500">
+              <span class="text-[11px]">
+                ⌨️ <kbd class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono text-[10px]">←</kbd> <kbd class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono text-[10px]">→</kbd> pour naviguer • <kbd class="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono text-[10px]">Échap</kbd> pour fermer
+              </span>
+
+              <a
+                id="rss-reader-modal-link"
+                href="#"
+                target="_blank"
+                class="text-[11px] text-zinc-400 hover:text-brand-300 hover:underline flex items-center gap-1 transition-colors"
+              >
+                <span>Source originale</span>
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+              </a>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    <!-- ========================================== -->
+    <!-- 3. PIED DE PAGE DISCRET                    -->
+    <!-- ========================================== -->
+    <footer class="text-center text-[10px] text-zinc-600 pt-3 pb-1">
+      Dev Hub • Tableau de bord local universel (macOS, Windows, Linux)
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/js/themeManager.js?v=45"></script>
+    <script src="/js/systemWidget.js?v=45"></script>
+    <script src="/js/systemFullWidget.js?v=45"></script>
+    <script src="/js/dockerWidget.js?v=45"></script>
+    <script src="/js/dockerFullWidget.js?v=45"></script>
+    <script src="/js/ollamaWidget.js?v=45"></script>
+    <script src="/js/ollamaFullWidget.js?v=45"></script>
+    <script src="/js/rssWidget.js?v=45"></script>
+    <script src="/js/rssFullWidget.js?v=45"></script>
+    <script src="/js/app.js?v=45"></script>
+  </body>
+</html>
