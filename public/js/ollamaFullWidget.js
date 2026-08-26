@@ -1,5 +1,6 @@
 /**
- * Widget Vue Pleine Page : Ollama AI Studio (Chat Multi-Tours, Personas & Rejouer les Prompts)
+ * Widget Vue Pleine Page : Ollama AI Studio
+ * Gestion avancée des Prompts Système, Personas sur-mesure, Fichiers Joints & Streaming SSE
  */
 
 class OllamaFullWidget {
@@ -8,58 +9,129 @@ class OllamaFullWidget {
     this.selectedModel = '';
     this.currentPersona = 'general';
     this.temperature = 0.7;
-    
+
+    // Fichiers joints en cours
+    this.attachments = []; // [{ id, name, size, formattedSize, extension, isImage, previewUrl, base64Data, textContent }]
+
     // Sessions de chat
     this.sessions = [];
     this.currentSessionId = null;
-    this.messages = []; // [{ role, content, timestamp, model }]
-    
+    this.messages = []; // [{ role, content, displayContent, attachments, images, time, model, isInterrupted }]
+
     this.abortController = null;
     this.isGenerating = false;
 
-    // Personas prédéfinis
-    this.personas = {
+    // 1. Personas Système Prédéfinis
+    this.builtinPersonas = {
       general: {
+        id: 'general',
         name: 'Assistant Général',
         icon: '⚡',
+        isBuiltin: true,
         system: 'Tu es un assistant IA local rapide, clair, concis et courtois. Réponds toujours en français sauf demande explicite.'
       },
       coder: {
+        id: 'coder',
         name: 'Expert Code & Architecture',
         icon: '💻',
-        system: 'Tu es un ingénieur logiciel senior et architecte d\'élite. Écris du code propre, performant, typé et bien documenté. Privilégie les solutions modernes et concises.'
+        isBuiltin: true,
+        system: 'Tu es un ingénieur logiciel senior et architecte d\'élite. Écris du code propre, performant, typé et bien documenté. Privilégie les solutions modernes, maintenables et concises.'
       },
       writer: {
+        id: 'writer',
         name: 'Rédacteur & Synthèse',
         icon: '📝',
-        system: 'Tu es un rédacteur d\'excellence et expert en synthèse documentaire. Structure tes propos avec clarté, pertinence et élégance.'
+        isBuiltin: true,
+        system: 'Tu es un rédacteur d\'excellence et expert en synthèse documentaire. Structure tes propos avec clarté, pertinence, rigueur et élégance stylistique.'
       },
       devops: {
+        id: 'devops',
         name: 'DevOps & Terminal',
         icon: '🛠️',
+        isBuiltin: true,
         system: 'Tu es un expert DevOps, Docker, scripting shell (Bash, Zsh, PowerShell) et administration système multi-OS (Linux, macOS, Windows). Donne des commandes shell directes, précises et sûres.'
       },
+      translator: {
+        id: 'translator',
+        name: 'Traducteur Multilingue',
+        icon: '🌐',
+        isBuiltin: true,
+        system: 'Tu es un traducteur et linguiste professionnel multilingue. Traduis avec exactitude terminologique, fluidité et respect des nuances culturelles et du registre de langue.'
+      },
+      reviewer: {
+        id: 'reviewer',
+        name: 'Revue de Code & Debug',
+        icon: '🔍',
+        isBuiltin: true,
+        system: 'Tu es un auditeur de code et relecteur technique exigeant. Analyse minutieusement le code fourni, détecte les failles de sécurité, bugs potentiels, edge cases et propose des optimisations concrètes.'
+      },
       custom: {
-        name: 'Personnalisé',
+        id: 'custom',
+        name: 'Prompt Libre / Sur-Mesure',
         icon: '⚙️',
-        system: ''
+        isBuiltin: true,
+        system: 'Tu es un assistant IA sur-mesure répondant de manière adaptée à mes besoins et instructions spécifiques.'
       }
     };
 
-    // Éléments DOM
+    // 2. Personas personnalisés chargés depuis le localStorage
+    this.customPersonas = [];
+    this.loadCustomPersonas();
+
+    // Éléments DOM principaux
     this.modelSelect = document.getElementById('full-ollama-model');
     this.modelDetailsBadge = document.getElementById('full-ollama-model-details');
     this.statusBadge = document.getElementById('full-ollama-status-badge');
+
+    // Éléments DOM Personas & System Prompt
     this.personaSelect = document.getElementById('full-ollama-persona');
+    this.newPersonaBtn = document.getElementById('full-ollama-new-persona-btn');
     this.customSystemContainer = document.getElementById('full-ollama-custom-system-container');
     this.customSystemInput = document.getElementById('full-ollama-custom-system');
+    this.systemStatusEl = document.getElementById('full-ollama-system-status');
+    this.systemCharCountEl = document.getElementById('full-ollama-system-char-count');
+    this.resetSystemBtn = document.getElementById('full-ollama-reset-system-btn');
+    this.savePersonaBtn = document.getElementById('full-ollama-save-persona-btn');
+    this.deletePersonaBtn = document.getElementById('full-ollama-delete-persona-btn');
+
+    // Header Chat Badge
+    this.headerPersonaBadge = document.getElementById('full-ollama-active-persona-badge');
+    this.headerPersonaIcon = document.getElementById('full-ollama-active-persona-icon');
+    this.headerPersonaName = document.getElementById('full-ollama-active-persona-name');
+
+    // Modal Persona
+    this.personaModal = document.getElementById('ollama-persona-modal');
+    this.personaForm = document.getElementById('ollama-persona-form');
+    this.personaIconInput = document.getElementById('ollama-persona-icon-input');
+    this.personaNameInput = document.getElementById('ollama-persona-name-input');
+    this.personaPromptInput = document.getElementById('ollama-persona-prompt-input');
+    this.personaPromptCount = document.getElementById('ollama-persona-prompt-count');
+    this.personaModalClose = document.getElementById('ollama-persona-modal-close');
+    this.personaModalCancel = document.getElementById('ollama-persona-modal-cancel');
+
+    // Éléments Fichiers & Drag-and-Drop
+    this.fileInput = document.getElementById('full-ollama-file-input');
+    this.attachBtn = document.getElementById('full-ollama-attach-btn');
+    this.attachmentsList = document.getElementById('full-ollama-attachments-list');
+    this.dropZone = document.getElementById('full-ollama-drop-zone');
+    this.dragOverlay = document.getElementById('full-ollama-drag-overlay');
+    this.fileNoticeEl = document.getElementById('full-ollama-file-notice');
+    this.fileNoticeText = document.getElementById('full-ollama-file-notice-text');
+
+    // Limites de sécurité des fichiers joints
+    this.MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 Mo par fichier
+    this.MAX_TOTAL_FILES_SIZE = 30 * 1024 * 1024; // 30 Mo au total
+    this.MAX_FILES_COUNT = 8; // 8 fichiers max simultanés
+    this.CONTEXT_WARN_CHARS = 100_000; // ~25k tokens : alerte contexte pour LLM local
+
+    // Paramètres & Contrôles
     this.tempSlider = document.getElementById('full-ollama-temp');
     this.tempValueEl = document.getElementById('full-ollama-temp-value');
-
     this.chatHistoryList = document.getElementById('full-ollama-sessions-list');
     this.newChatBtn = document.getElementById('full-ollama-new-chat-btn');
     this.clearAllChatsBtn = document.getElementById('full-ollama-clear-all-btn');
 
+    // Messages & Prompt
     this.messagesContainer = document.getElementById('full-ollama-messages');
     this.emptyState = document.getElementById('full-ollama-empty-state');
     this.promptInput = document.getElementById('full-ollama-prompt-input');
@@ -67,9 +139,587 @@ class OllamaFullWidget {
     this.stopBtn = document.getElementById('full-ollama-stop-btn');
     this.charCountEl = document.getElementById('full-ollama-char-count');
 
+    // Initialisation
+    this.loadSavedSettings();
     this.loadSessionsFromStorage();
+    this.populatePersonaSelect();
     this.bindEvents();
+    this.setupDragAndDrop();
+    this.setupClipboardPaste();
   }
+
+  loadSavedSettings() {
+    const savedPersona = localStorage.getItem('devhub_full_ollama_persona') || 'general';
+    this.currentPersona = savedPersona;
+  }
+
+  // --- Gestion des Fichiers & Attachments ---
+
+  async handleFilesSelection(fileList) {
+    if (!fileList || fileList.length === 0) return;
+
+    const errors = [];
+    const filesArray = Array.from(fileList);
+
+    for (const file of filesArray) {
+      // 1. Vérifier le nombre maximal de fichiers
+      if (this.attachments.length >= this.MAX_FILES_COUNT) {
+        errors.push(`Limite maximale de <strong>${this.MAX_FILES_COUNT} fichiers</strong> par envoi atteinte.`);
+        break;
+      }
+
+      // 2. Vérifier la taille par fichier (10 Mo max)
+      if (file.size > this.MAX_FILE_SIZE) {
+        errors.push(`<strong>${this.escapeHtml(file.name)}</strong> (${this.formatBytes(file.size)}) dépasse la taille max de ${this.formatBytes(this.MAX_FILE_SIZE)}.`);
+        continue;
+      }
+
+      // 3. Vérifier la taille cumulée (30 Mo max)
+      const currentTotalSize = this.attachments.reduce((sum, a) => sum + (a.size || 0), 0);
+      if (currentTotalSize + file.size > this.MAX_TOTAL_FILES_SIZE) {
+        errors.push(`L'ajout de <strong>${this.escapeHtml(file.name)}</strong> dépasse la taille totale autorisée de ${this.formatBytes(this.MAX_TOTAL_FILES_SIZE)}.`);
+        continue;
+      }
+
+      // 4. Éviter les doublons exacts
+      if (this.attachments.some(a => a.name === file.name && a.size === file.size)) {
+        continue;
+      }
+
+      const extension = (file.name.split('.').pop() || '').toLowerCase();
+      const isImage = file.type.startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp', 'svg'].includes(extension);
+
+      const attachment = {
+        id: 'file_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+        name: file.name,
+        size: file.size,
+        formattedSize: this.formatBytes(file.size),
+        extension,
+        isImage,
+        previewUrl: null,
+        base64Data: null,
+        textContent: null,
+        isHugeText: false,
+        charCount: 0
+      };
+
+      if (isImage) {
+        try {
+          const dataUrl = await this.readFileAsDataURL(file);
+          attachment.previewUrl = dataUrl;
+          attachment.base64Data = dataUrl.split(',')[1] || '';
+          this.attachments.push(attachment);
+        } catch (err) {
+          console.error('Erreur lecture image:', err);
+          errors.push(`Impossible de lire l'image <strong>${this.escapeHtml(file.name)}</strong>.`);
+        }
+      } else {
+        try {
+          const text = await this.readFileAsText(file);
+          attachment.textContent = text;
+          attachment.charCount = text.length;
+          if (text.length > this.CONTEXT_WARN_CHARS) {
+            attachment.isHugeText = true;
+          }
+          this.attachments.push(attachment);
+        } catch (err) {
+          console.error('Erreur lecture fichier texte:', err);
+          errors.push(`Impossible de lire le fichier <strong>${this.escapeHtml(file.name)}</strong>.`);
+        }
+      }
+    }
+
+    this.renderAttachmentsPreview();
+
+    // Afficher un bandeau d'information si des limites ont été atteintes
+    if (errors.length > 0) {
+      this.showFileNotice(errors.join('<br>'));
+    }
+
+    if (this.promptInput) {
+      this.promptInput.focus();
+    }
+  }
+
+  showFileNotice(htmlMessage) {
+    if (!this.fileNoticeEl || !this.fileNoticeText) return;
+    this.fileNoticeText.innerHTML = htmlMessage;
+    this.fileNoticeEl.classList.remove('hidden');
+    if (this._noticeTimeout) clearTimeout(this._noticeTimeout);
+    this._noticeTimeout = setTimeout(() => {
+      this.fileNoticeEl?.classList.add('hidden');
+    }, 6000);
+  }
+
+  hideFileNotice() {
+    if (this.fileNoticeEl) {
+      this.fileNoticeEl.classList.add('hidden');
+    }
+    if (this._noticeTimeout) clearTimeout(this._noticeTimeout);
+  }
+
+  readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(file, 'utf-8');
+    });
+  }
+
+  readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  removeAttachment(id) {
+    this.attachments = this.attachments.filter(a => a.id !== id);
+    this.renderAttachmentsPreview();
+  }
+
+  clearAttachments() {
+    this.attachments = [];
+    this.hideFileNotice();
+    this.renderAttachmentsPreview();
+    if (this.fileInput) this.fileInput.value = '';
+  }
+
+  renderAttachmentsPreview() {
+    if (!this.attachmentsList) return;
+
+    if (this.attachments.length === 0) {
+      this.attachmentsList.innerHTML = '';
+      this.attachmentsList.classList.add('hidden');
+      return;
+    }
+
+    const totalBytes = this.attachments.reduce((sum, a) => sum + (a.size || 0), 0);
+    const totalFormatted = this.formatBytes(totalBytes);
+    const hasHugeText = this.attachments.some(a => a.isHugeText);
+
+    this.attachmentsList.classList.remove('hidden');
+    this.attachmentsList.innerHTML = `
+      <div class="flex items-center justify-between px-1 text-[11px] text-zinc-400">
+        <div class="flex items-center gap-1.5 font-medium flex-wrap">
+          <span class="text-purple-400 font-semibold">📎 ${this.attachments.length} / ${this.MAX_FILES_COUNT} fichier(s)</span>
+          <span class="text-zinc-600 font-mono">•</span>
+          <span class="text-zinc-400 font-mono">${totalFormatted} / ${this.formatBytes(this.MAX_TOTAL_FILES_SIZE)} max</span>
+          ${hasHugeText ? `<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold text-[10px]" title="Fichier(s) très volumineux : risque de saturation du contexte">⚠️ Fichier très long</span>` : ''}
+        </div>
+        <button
+          type="button"
+          onclick="window.ollamaFullWidget.clearAttachments()"
+          class="text-[10px] text-zinc-500 hover:text-rose-400 font-medium transition-colors cursor-pointer"
+          title="Tout retirer"
+        >
+          Tout retirer
+        </button>
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        ${this.attachments.map(att => `
+          <div class="flex items-center gap-2 p-1.5 px-2.5 rounded-xl bg-zinc-900 border ${att.isHugeText ? 'border-amber-500/40 bg-amber-500/5' : 'border-purple-500/30'} text-xs text-zinc-200 shadow-sm animate-fade-in group">
+            ${att.isImage ? `
+              <img src="${att.previewUrl}" alt="${this.escapeHtml(att.name)}" class="w-5 h-5 rounded object-cover border border-zinc-700 shrink-0" />
+            ` : `
+              <span class="text-sm shrink-0">${this.getFileIcon(att.extension)}</span>
+            `}
+            
+            <div class="flex flex-col min-w-0 max-w-[140px] sm:max-w-[200px]">
+              <div class="flex items-center gap-1">
+                <span class="text-[11px] font-semibold text-zinc-100 truncate">${this.escapeHtml(att.name)}</span>
+                ${att.isHugeText ? `<span class="text-amber-400 text-[10px]" title="Fichier très long (~${Math.round(att.charCount / 1000)}k caractères)">⚠️</span>` : ''}
+              </div>
+              <span class="text-[9px] text-zinc-400 font-mono">${att.formattedSize}${att.charCount ? ` • ${Math.round(att.charCount / 1000)}k car.` : ''}</span>
+            </div>
+
+            <button
+              type="button"
+              onclick="window.ollamaFullWidget.removeAttachment('${att.id}')"
+              class="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-zinc-800 transition-colors ml-1 cursor-pointer"
+              title="Retirer ce fichier"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  getFileIcon(ext) {
+    const icons = {
+      js: '🟨', ts: '🟦', jsx: '⚛️', tsx: '⚛️', py: '🐍',
+      json: '📋', md: '📝', html: '🌐', css: '🎨', sh: '🐚',
+      sql: '🗄️', csv: '📊', yml: '⚙️', yaml: '⚙️', rs: '🦀',
+      go: '🐹', java: '☕', cpp: '⚙️', c: '⚙️', php: '🐘'
+    };
+    return icons[ext] || '📄';
+  }
+
+  getSyntaxLanguage(ext) {
+    const map = {
+      js: 'javascript', ts: 'typescript', jsx: 'javascript', tsx: 'typescript',
+      py: 'python', json: 'json', md: 'markdown', html: 'html',
+      css: 'css', scss: 'scss', sh: 'bash', bash: 'bash', zsh: 'bash',
+      sql: 'sql', csv: 'csv', yml: 'yaml', yaml: 'yaml', rs: 'rust',
+      go: 'go', java: 'java', cpp: 'cpp', c: 'c', php: 'php',
+      xml: 'xml', toml: 'toml', ini: 'ini'
+    };
+    return map[ext] || '';
+  }
+
+  formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'Ko', 'Mo', 'Go'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  setupDragAndDrop() {
+    const dropArea = this.dropZone || document.getElementById('full-ollama-input-container');
+    if (!dropArea) return;
+
+    let dragCounter = 0;
+
+    const showOverlay = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter++;
+      if (this.dragOverlay) this.dragOverlay.classList.remove('hidden');
+    };
+
+    const hideOverlay = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dragCounter = 0;
+        if (this.dragOverlay) this.dragOverlay.classList.add('hidden');
+      }
+    };
+
+    dropArea.addEventListener('dragenter', showOverlay);
+    dropArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    dropArea.addEventListener('dragleave', hideOverlay);
+    dropArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter = 0;
+      if (this.dragOverlay) this.dragOverlay.classList.add('hidden');
+
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        this.handleFilesSelection(e.dataTransfer.files);
+      }
+    });
+
+    // Support également du drag & drop sur la boîte de messages
+    if (this.messagesContainer) {
+      this.messagesContainer.addEventListener('dragenter', showOverlay);
+      this.messagesContainer.addEventListener('dragleave', hideOverlay);
+      this.messagesContainer.addEventListener('dragover', (e) => e.preventDefault());
+      this.messagesContainer.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragCounter = 0;
+        if (this.dragOverlay) this.dragOverlay.classList.add('hidden');
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          this.handleFilesSelection(e.dataTransfer.files);
+        }
+      });
+    }
+  }
+
+  setupClipboardPaste() {
+    if (!this.promptInput) return;
+
+    this.promptInput.addEventListener('paste', (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const files = [];
+      for (const item of items) {
+        if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      }
+
+      if (files.length > 0) {
+        this.handleFilesSelection(files);
+      }
+    });
+  }
+
+  // --- Gestion des Personas & Prompts Système ---
+
+  loadCustomPersonas() {
+    try {
+      const raw = localStorage.getItem('devhub_ollama_custom_personas');
+      this.customPersonas = raw ? JSON.parse(raw) : [];
+    } catch {
+      this.customPersonas = [];
+    }
+  }
+
+  saveCustomPersonas() {
+    try {
+      localStorage.setItem('devhub_ollama_custom_personas', JSON.stringify(this.customPersonas));
+    } catch (err) {
+      console.error('Erreur sauvegarde personas personnalisés:', err);
+    }
+  }
+
+  getAllPersonasMap() {
+    const map = { ...this.builtinPersonas };
+    for (const p of this.customPersonas) {
+      map[p.id] = p;
+    }
+    return map;
+  }
+
+  getPersona(id) {
+    const all = this.getAllPersonasMap();
+    return all[id] || this.builtinPersonas.general;
+  }
+
+  populatePersonaSelect() {
+    if (!this.personaSelect) return;
+
+    let html = '<optgroup label="✨ Personas Prédéfinis">';
+    for (const key of Object.keys(this.builtinPersonas)) {
+      const p = this.builtinPersonas[key];
+      html += `<option value="${p.id}" ${p.id === this.currentPersona ? 'selected' : ''}>${p.icon} ${p.name}</option>`;
+    }
+    html += '</optgroup>';
+
+    if (this.customPersonas.length > 0) {
+      html += '<optgroup label="💾 Personas Personnalisés">';
+      for (const p of this.customPersonas) {
+        html += `<option value="${p.id}" ${p.id === this.currentPersona ? 'selected' : ''}>${p.icon || '🤖'} ${p.name}</option>`;
+      }
+      html += '</optgroup>';
+    }
+
+    this.personaSelect.innerHTML = html;
+
+    if (!this.getPersona(this.currentPersona)) {
+      this.currentPersona = 'general';
+      this.personaSelect.value = 'general';
+    } else {
+      this.personaSelect.value = this.currentPersona;
+    }
+
+    this.updateSystemPromptUI();
+  }
+
+  selectPersona(personaId, updateSession = true) {
+    this.currentPersona = personaId;
+    localStorage.setItem('devhub_full_ollama_persona', personaId);
+
+    if (this.personaSelect) {
+      this.personaSelect.value = personaId;
+    }
+
+    const persona = this.getPersona(personaId);
+    let promptText = persona?.system || '';
+
+    const currentSession = this.sessions.find(s => s.id === this.currentSessionId);
+    if (currentSession) {
+      if (updateSession) {
+        currentSession.persona = personaId;
+        currentSession.systemPrompt = promptText;
+        this.saveSessionsToStorage();
+      } else if (currentSession.systemPrompt && currentSession.persona === personaId) {
+        promptText = currentSession.systemPrompt;
+      }
+    }
+
+    if (this.customSystemInput) {
+      this.customSystemInput.value = promptText;
+    }
+
+    this.updateSystemPromptUI();
+    this.renderMessages();
+  }
+
+  getCurrentSystemPrompt() {
+    if (this.customSystemInput && this.customSystemInput.value.trim()) {
+      return this.customSystemInput.value.trim();
+    }
+    const persona = this.getPersona(this.currentPersona);
+    return persona?.system || this.builtinPersonas.general.system;
+  }
+
+  updateSystemPromptUI() {
+    const persona = this.getPersona(this.currentPersona);
+    const promptText = this.getCurrentSystemPrompt();
+
+    if (this.headerPersonaName) {
+      this.headerPersonaName.textContent = persona.name;
+    }
+    if (this.headerPersonaIcon) {
+      this.headerPersonaIcon.textContent = persona.icon || '⚡';
+    }
+
+    if (this.deletePersonaBtn) {
+      if (!persona.isBuiltin) {
+        this.deletePersonaBtn.classList.remove('hidden');
+      } else {
+        this.deletePersonaBtn.classList.add('hidden');
+      }
+    }
+
+    if (this.systemCharCountEl) {
+      this.systemCharCountEl.textContent = `${promptText.length} car.`;
+    }
+
+    if (this.systemStatusEl) {
+      this.systemStatusEl.textContent = persona.isBuiltin ? 'Rôle actif' : 'Persona personnalisé';
+    }
+  }
+
+  resetCurrentPersonaPrompt() {
+    const persona = this.getPersona(this.currentPersona);
+    if (!persona) return;
+
+    let defaultPrompt = '';
+    if (persona.isBuiltin) {
+      defaultPrompt = this.builtinPersonas[persona.id]?.system || '';
+    } else {
+      const originalCustom = this.customPersonas.find(p => p.id === persona.id);
+      defaultPrompt = originalCustom?.system || '';
+    }
+
+    if (this.customSystemInput) {
+      this.customSystemInput.value = defaultPrompt;
+      this.customSystemInput.dispatchEvent(new Event('input'));
+    }
+
+    this.showSystemPromptToast('↺ Prompt réinitialisé par défaut');
+  }
+
+  saveCurrentPersonaPrompt() {
+    const promptText = this.getCurrentSystemPrompt();
+    const persona = this.getPersona(this.currentPersona);
+
+    if (!persona.isBuiltin) {
+      const existing = this.customPersonas.find(p => p.id === persona.id);
+      if (existing) {
+        existing.system = promptText;
+        this.saveCustomPersonas();
+        this.showSystemPromptToast('💾 Persona sauvegardé !');
+      }
+    } else {
+      this.openNewPersonaModal(promptText, `Mon ${persona.name}`, persona.icon || '🤖');
+    }
+
+    const currentSession = this.sessions.find(s => s.id === this.currentSessionId);
+    if (currentSession) {
+      currentSession.systemPrompt = promptText;
+      currentSession.persona = this.currentPersona;
+      this.saveSessionsToStorage();
+    }
+  }
+
+  deleteCurrentCustomPersona() {
+    const persona = this.getPersona(this.currentPersona);
+    if (!persona || persona.isBuiltin) return;
+
+    if (confirm(`Voulez-vous vraiment supprimer le persona "${persona.name}" ?`)) {
+      this.customPersonas = this.customPersonas.filter(p => p.id !== persona.id);
+      this.saveCustomPersonas();
+      this.selectPersona('general', true);
+      this.populatePersonaSelect();
+      this.showSystemPromptToast('🗑️ Persona supprimé');
+    }
+  }
+
+  openNewPersonaModal(initialPrompt = '', initialName = '', initialIcon = '🤖') {
+    if (!this.personaModal) return;
+
+    if (this.personaIconInput) this.personaIconInput.value = initialIcon;
+    if (this.personaNameInput) this.personaNameInput.value = initialName;
+    if (this.personaPromptInput) {
+      this.personaPromptInput.value = initialPrompt || this.getCurrentSystemPrompt();
+      if (this.personaPromptCount) {
+        this.personaPromptCount.textContent = `${this.personaPromptInput.value.length} car.`;
+      }
+    }
+
+    this.personaModal.classList.remove('hidden');
+    setTimeout(() => {
+      this.personaNameInput?.focus();
+      this.personaNameInput?.select();
+    }, 50);
+  }
+
+  closeNewPersonaModal() {
+    if (!this.personaModal) return;
+    this.personaModal.classList.add('hidden');
+    if (this.personaForm) this.personaForm.reset();
+  }
+
+  handleCreatePersona(e) {
+    if (e) e.preventDefault();
+    const name = this.personaNameInput ? this.personaNameInput.value.trim() : '';
+    const icon = this.personaIconInput ? this.personaIconInput.value.trim() || '🤖' : '🤖';
+    const system = this.personaPromptInput ? this.personaPromptInput.value.trim() : '';
+
+    if (!name || !system) {
+      alert('Veuillez fournir un nom et une instruction système.');
+      return;
+    }
+
+    const newId = 'custom_' + Date.now();
+    const newPersona = {
+      id: newId,
+      name,
+      icon,
+      isBuiltin: false,
+      system
+    };
+
+    this.customPersonas.unshift(newPersona);
+    this.saveCustomPersonas();
+    this.closeNewPersonaModal();
+
+    this.populatePersonaSelect();
+    this.selectPersona(newId, true);
+    this.showSystemPromptToast(`✨ Persona "${name}" créé !`);
+  }
+
+  showSystemPromptToast(text) {
+    if (this.systemStatusEl) {
+      const originalText = this.systemStatusEl.textContent;
+      this.systemStatusEl.textContent = text;
+      this.systemStatusEl.classList.add('text-purple-400', 'font-bold');
+      setTimeout(() => {
+        this.systemStatusEl.textContent = originalText;
+        this.systemStatusEl.classList.remove('text-purple-400', 'font-bold');
+      }, 2500);
+    }
+  }
+
+  focusSystemPrompt() {
+    if (this.customSystemInput) {
+      this.customSystemInput.focus();
+      this.customSystemInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      this.customSystemInput.classList.add('ring-2', 'ring-purple-500');
+      setTimeout(() => {
+        this.customSystemInput?.classList.remove('ring-2', 'ring-purple-500');
+      }, 1500);
+    }
+  }
+
+  // --- Événements & Binding ---
 
   bindEvents() {
     // Changement de modèle
@@ -81,18 +731,107 @@ class OllamaFullWidget {
       });
     }
 
-    // Changement de persona
+    // Changement de Persona
     if (this.personaSelect) {
       this.personaSelect.addEventListener('change', (e) => {
-        this.currentPersona = e.target.value;
-        if (this.currentPersona === 'custom') {
-          this.customSystemContainer?.classList.remove('hidden');
-        } else {
-          this.customSystemContainer?.classList.add('hidden');
-        }
-        localStorage.setItem('devhub_full_ollama_persona', this.currentPersona);
+        this.selectPersona(e.target.value, true);
       });
     }
+
+    // Bouton "+ Nouveau Persona"
+    if (this.newPersonaBtn) {
+      this.newPersonaBtn.addEventListener('click', () => {
+        this.openNewPersonaModal(this.getCurrentSystemPrompt(), '', '🤖');
+      });
+    }
+
+    // Badge Persona dans le Header du Chat
+    if (this.headerPersonaBadge) {
+      this.headerPersonaBadge.addEventListener('click', () => {
+        this.focusSystemPrompt();
+      });
+    }
+
+    // Bouton Joindre des Fichiers (Déclenche l'input file caché)
+    if (this.attachBtn && this.fileInput) {
+      this.attachBtn.addEventListener('click', () => {
+        this.fileInput.click();
+      });
+    }
+
+    if (this.fileInput) {
+      this.fileInput.addEventListener('change', (e) => {
+        this.handleFilesSelection(e.target.files);
+      });
+    }
+
+    // Modifications en direct du System Prompt dans la zone de texte
+    if (this.customSystemInput) {
+      this.customSystemInput.addEventListener('input', () => {
+        const text = this.customSystemInput.value;
+        if (this.systemCharCountEl) {
+          this.systemCharCountEl.textContent = `${text.length} car.`;
+        }
+
+        const currentSession = this.sessions.find(s => s.id === this.currentSessionId);
+        if (currentSession) {
+          currentSession.systemPrompt = text;
+          this.saveSessionsToStorage();
+        }
+      });
+    }
+
+    // Bouton Réinitialiser au prompt par défaut
+    if (this.resetSystemBtn) {
+      this.resetSystemBtn.addEventListener('click', () => this.resetCurrentPersonaPrompt());
+    }
+
+    // Bouton Sauvegarder Prompt / Persona
+    if (this.savePersonaBtn) {
+      this.savePersonaBtn.addEventListener('click', () => this.saveCurrentPersonaPrompt());
+    }
+
+    // Bouton Supprimer Persona Personnalisé
+    if (this.deletePersonaBtn) {
+      this.deletePersonaBtn.addEventListener('click', () => this.deleteCurrentCustomPersona());
+    }
+
+    // Modal Nouveau Persona : Événements
+    if (this.personaForm) {
+      this.personaForm.addEventListener('submit', (e) => this.handleCreatePersona(e));
+    }
+    if (this.personaModalClose) {
+      this.personaModalClose.addEventListener('click', () => this.closeNewPersonaModal());
+    }
+    if (this.personaModalCancel) {
+      this.personaModalCancel.addEventListener('click', () => this.closeNewPersonaModal());
+    }
+    if (this.personaPromptInput) {
+      this.personaPromptInput.addEventListener('input', () => {
+        if (this.personaPromptCount) {
+          this.personaPromptCount.textContent = `${this.personaPromptInput.value.length} car.`;
+        }
+      });
+    }
+
+    // Sélecteur d'icônes rapides dans la modale
+    const iconPicker = document.getElementById('ollama-persona-icon-picker');
+    if (iconPicker) {
+      iconPicker.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (this.personaIconInput) {
+            this.personaIconInput.value = btn.innerText.trim();
+          }
+        });
+      });
+    }
+
+    // Fermeture de la modale au clic extérieur ou Échap
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.personaModal && !this.personaModal.classList.contains('hidden')) {
+        this.closeNewPersonaModal();
+      }
+    });
 
     // Température
     if (this.tempSlider) {
@@ -228,16 +967,21 @@ class OllamaFullWidget {
 
   createNewSession() {
     const newId = 'session_' + Date.now();
+    const activePrompt = this.getCurrentSystemPrompt();
+
     const newSession = {
       id: newId,
       title: 'Nouvelle conversation',
       createdAt: new Date().toISOString(),
+      persona: this.currentPersona,
+      systemPrompt: activePrompt,
       messages: []
     };
 
     this.sessions.unshift(newSession);
     this.currentSessionId = newId;
     this.messages = [];
+    this.clearAttachments();
     this.saveSessionsToStorage();
     this.renderSessionsList();
     this.renderMessages();
@@ -255,6 +999,22 @@ class OllamaFullWidget {
 
     this.currentSessionId = sessionId;
     this.messages = session.messages || [];
+    this.clearAttachments();
+
+    // Restaurer le persona et le system prompt enregistrés pour cette session
+    if (session.persona && this.getPersona(session.persona)) {
+      this.currentPersona = session.persona;
+    }
+
+    if (this.personaSelect) {
+      this.personaSelect.value = this.currentPersona;
+    }
+
+    if (this.customSystemInput) {
+      this.customSystemInput.value = session.systemPrompt || this.getPersona(this.currentPersona)?.system || '';
+    }
+
+    this.updateSystemPromptUI();
     this.renderSessionsList();
     this.renderMessages();
   }
@@ -323,7 +1083,6 @@ class OllamaFullWidget {
     const session = this.sessions.find(s => s.id === sessionId);
     if (!session) return;
 
-    // 1. Chercher les messages de la session
     let promptText = '';
     const msgs = (session.id === this.currentSessionId && this.messages.length > 0)
       ? this.messages
@@ -331,15 +1090,14 @@ class OllamaFullWidget {
 
     const userMsg = msgs.find(m => m.role === 'user');
     if (userMsg && userMsg.content) {
-      promptText = userMsg.content;
+      promptText = userMsg.displayContent || userMsg.content;
     } else if (msgs.length > 0 && msgs[0].content) {
-      promptText = msgs[0].content;
+      promptText = msgs[0].displayContent || msgs[0].content;
     } else if (session.title && session.title !== 'Nouvelle conversation') {
       promptText = session.title;
     }
 
     if (!promptText) {
-      // Si aucun message, proposer directement le renommage manuel inline
       this.editSessionTitle(sessionId, e);
       return;
     }
@@ -368,7 +1126,7 @@ class OllamaFullWidget {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: promptText,
+          prompt: promptText.slice(0, 300),
           model: this.selectedModel || 'gemma4:e2b'
         })
       });
@@ -417,13 +1175,15 @@ class OllamaFullWidget {
 
     this.chatHistoryList.innerHTML = this.sessions.map(s => {
       const isActive = s.id === this.currentSessionId;
+      const sPersona = this.getPersona(s.persona || 'general');
+
       return `
         <div 
           onclick="${s._isEditing ? '' : `window.ollamaFullWidget.loadSession('${s.id}')`}"
           class="group flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-all ${isActive ? 'bg-brand-500/15 border border-brand-500/30 text-white font-medium shadow-sm' : 'hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 border border-transparent'}"
         >
           <div class="flex items-center gap-2 min-w-0 pr-2 flex-1">
-            <svg class="w-3.5 h-3.5 shrink-0 ${isActive ? 'text-brand-400' : 'text-zinc-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+            <span class="text-xs shrink-0">${sPersona.icon || '💬'}</span>
             
             ${s._isEditing ? `
               <input
@@ -487,28 +1247,75 @@ class OllamaFullWidget {
 
     this.emptyState?.classList.add('hidden');
 
-    this.messagesContainer.innerHTML = this.messages.map((m, idx) => {
+    const persona = this.getPersona(this.currentPersona);
+    const systemPrompt = this.getCurrentSystemPrompt();
+
+    // Bannière récapitulative du prompt système en haut du fil de discussion
+    const systemBannerHtml = `
+      <div class="mb-4 p-3 rounded-2xl bg-purple-500/5 border border-purple-500/20 flex items-start justify-between gap-3 text-xs animate-fade-in group">
+        <div class="flex items-start gap-2.5 min-w-0 flex-1">
+          <span class="text-base shrink-0 p-1 rounded-lg bg-purple-500/10">${persona.icon || '⚡'}</span>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-purple-300 text-xs">${this.escapeHtml(persona.name)}</span>
+              <span class="text-[10px] text-zinc-500 font-mono">Instruction Système active</span>
+            </div>
+            <p class="text-[11px] text-zinc-400 mt-1 line-clamp-2 leading-relaxed font-mono">${this.escapeHtml(systemPrompt)}</p>
+          </div>
+        </div>
+        <button
+          onclick="window.ollamaFullWidget.focusSystemPrompt()"
+          class="px-2.5 py-1 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white text-[10px] font-semibold shrink-0 transition-all border border-zinc-700/60 shadow-sm cursor-pointer"
+          title="Modifier le prompt système pour cette session"
+        >
+          ⚙️ Modifier
+        </button>
+      </div>
+    `;
+
+    const messagesHtml = this.messages.map((m, idx) => {
       const isUser = m.role === 'user';
       const isInterrupted = !isUser && (m.content.includes('(Génération interrompue)') || m.isInterrupted);
       const isError = !isUser && m.content.startsWith('⚠️ Erreur');
+
+      // Affichage du contenu textuel de l'utilisateur
+      const userTextToDisplay = m.displayContent || m.content;
 
       return `
         <div class="flex gap-3.5 ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in group">
           ${!isUser ? `
             <div class="w-8 h-8 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-300 font-black text-xs shrink-0 mt-0.5">
-              🦙
+              ${persona.icon || '🦙'}
             </div>
           ` : ''}
 
           <div class="max-w-[85%] sm:max-w-[75%] space-y-1">
             <div class="flex items-center gap-2 ${isUser ? 'justify-end' : 'justify-start'} px-1">
-              <span class="text-[10px] font-semibold text-zinc-500 uppercase">${isUser ? 'Vous' : (m.model || 'AI Studio')}</span>
+              <span class="text-[10px] font-semibold text-zinc-500 uppercase">${isUser ? 'Vous' : (m.model || persona.name || 'AI Studio')}</span>
               <span class="text-[10px] text-zinc-600 font-mono">${m.time || ''}</span>
             </div>
 
-            <div class="p-4 rounded-2xl ${isUser ? 'bg-brand-600 text-white rounded-tr-sm shadow-md' : 'bg-zinc-900/90 border border-zinc-800 text-zinc-100 rounded-tl-sm shadow-lg'}">
+            <div class="p-4 rounded-2xl ${isUser ? 'bg-brand-600 text-white rounded-tr-sm shadow-md' : 'bg-zinc-900/90 border border-zinc-800 text-zinc-100 rounded-tl-sm shadow-lg'} space-y-2">
+              
+              <!-- Si des fichiers ou images sont attachés au message utilisateur -->
+              ${(isUser && m.attachments && m.attachments.length > 0) ? `
+                <div class="flex flex-wrap gap-1.5 pb-2 border-b border-brand-500/30">
+                  ${m.attachments.map(att => `
+                    <div class="flex items-center gap-1.5 p-1 px-2 rounded-lg bg-black/20 text-[10px] border border-white/10">
+                      ${att.isImage ? `
+                        <img src="${att.previewUrl}" alt="${this.escapeHtml(att.name)}" class="w-4 h-4 rounded object-cover" />
+                      ` : `
+                        <span>${this.getFileIcon(att.extension)}</span>
+                      `}
+                      <span class="font-medium truncate max-w-[120px]">${this.escapeHtml(att.name)}</span>
+                      <span class="opacity-70 font-mono text-[9px]">(${att.size})</span>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+
               ${isUser ? `
-                <p class="text-xs whitespace-pre-wrap leading-relaxed">${this.escapeHtml(m.content)}</p>
+                <p class="text-xs whitespace-pre-wrap leading-relaxed">${this.escapeHtml(userTextToDisplay)}</p>
               ` : `
                 <div class="markdown-body text-xs space-y-2" id="msg-content-${idx}">
                   ${this.parseMarkdown(m.content)}
@@ -522,7 +1329,7 @@ class OllamaFullWidget {
                     </span>
                     <button
                       onclick="window.ollamaFullWidget.regenerateResponse(${idx})"
-                      class="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm"
+                      class="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm cursor-pointer"
                     >
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                       <span>Rejouer le prompt</span>
@@ -532,12 +1339,12 @@ class OllamaFullWidget {
               `}
             </div>
 
-            <!-- Barre d'actions du message -->
+            <!-- Actions sur le message -->
             <div class="flex items-center ${isUser ? 'justify-end' : 'justify-start'} gap-1.5 px-1 pt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
               ${isUser ? `
                 <button
                   onclick="window.ollamaFullWidget.editOrReplayPrompt(${idx})"
-                  class="text-[10px] text-zinc-400 hover:text-brand-300 flex items-center gap-1 transition-colors px-1.5 py-0.5 rounded hover:bg-zinc-800/80"
+                  class="text-[10px] text-zinc-400 hover:text-brand-300 flex items-center gap-1 transition-colors px-1.5 py-0.5 rounded hover:bg-zinc-800/80 cursor-pointer"
                   title="Rejouer ou modifier ce prompt"
                 >
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -546,7 +1353,7 @@ class OllamaFullWidget {
               ` : `
                 <button
                   onclick="window.ollamaFullWidget.regenerateResponse(${idx})"
-                  class="text-[10px] text-zinc-400 hover:text-purple-300 flex items-center gap-1 transition-colors px-1.5 py-0.5 rounded hover:bg-zinc-800/80"
+                  class="text-[10px] text-zinc-400 hover:text-purple-300 flex items-center gap-1 transition-colors px-1.5 py-0.5 rounded hover:bg-zinc-800/80 cursor-pointer"
                   title="Régénérer cette réponse"
                 >
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -556,7 +1363,7 @@ class OllamaFullWidget {
 
               <button
                 onclick="window.ollamaFullWidget.copyMessageContent(${idx}, this)"
-                class="text-[10px] text-zinc-400 hover:text-zinc-200 flex items-center gap-1 transition-colors px-1.5 py-0.5 rounded hover:bg-zinc-800/80"
+                class="text-[10px] text-zinc-400 hover:text-zinc-200 flex items-center gap-1 transition-colors px-1.5 py-0.5 rounded hover:bg-zinc-800/80 cursor-pointer"
                 title="Copier le texte"
               >
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
@@ -574,6 +1381,7 @@ class OllamaFullWidget {
       `;
     }).join('');
 
+    this.messagesContainer.innerHTML = systemBannerHtml + messagesHtml;
     this.scrollToBottom();
     this.attachCopyCodeButtons();
   }
@@ -582,8 +1390,10 @@ class OllamaFullWidget {
 
   async handleSendMessage() {
     if (this.isGenerating || !this.promptInput) return;
-    const prompt = this.promptInput.value.trim();
-    if (!prompt) return;
+    const rawPrompt = this.promptInput.value.trim();
+
+    // S'il n'y a ni texte ni fichiers attachés, on ne fait rien
+    if (!rawPrompt && this.attachments.length === 0) return;
 
     if (!this.selectedModel) {
       alert('Veuillez sélectionner un modèle Ollama actif.');
@@ -593,27 +1403,67 @@ class OllamaFullWidget {
     const now = new Date();
     const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-    // 1. Ajouter le message utilisateur
-    const userMsg = { role: 'user', content: prompt, time: timeStr };
+    // Traitement des pièces jointes
+    const attachedFiles = [...this.attachments];
+    const imagePayloads = [];
+    let fullPromptContent = rawPrompt || 'Veuillez analyser les fichiers joints ci-dessous.';
+
+    if (attachedFiles.length > 0) {
+      const textFilesBlocks = [];
+
+      for (const att of attachedFiles) {
+        if (att.isImage && att.base64Data) {
+          imagePayloads.push(att.base64Data);
+        } else if (att.textContent) {
+          const lang = this.getSyntaxLanguage(att.extension);
+          textFilesBlocks.push(`\n\n--- 📄 Fichier joint : \`${att.name}\` (${att.formattedSize}) ---\n\`\`\`${lang}\n${att.textContent}\n\`\`\`\n---`);
+        }
+      }
+
+      if (textFilesBlocks.length > 0) {
+        fullPromptContent += textFilesBlocks.join('\n');
+      }
+    }
+
+    // 1. Ajouter le message utilisateur avec métadonnées d'attachements
+    const userMsg = {
+      role: 'user',
+      content: fullPromptContent,
+      displayContent: rawPrompt || (attachedFiles.length > 0 ? `Analyse de ${attachedFiles.length} fichier(s)` : ''),
+      attachments: attachedFiles.map(a => ({
+        name: a.name,
+        size: a.formattedSize,
+        extension: a.extension,
+        isImage: a.isImage,
+        previewUrl: a.previewUrl
+      })),
+      images: imagePayloads.length > 0 ? imagePayloads : undefined,
+      time: timeStr
+    };
+
     this.messages.push(userMsg);
 
     // Synchronisation de la session active
     const currentSession = this.sessions.find(s => s.id === this.currentSessionId);
     if (currentSession) {
       currentSession.messages = this.messages;
-      // Titre automatique intelligent par IA au premier message
+      currentSession.persona = this.currentPersona;
+      currentSession.systemPrompt = this.getCurrentSystemPrompt();
+
+      // Titre automatique intelligent au premier message
       if (this.messages.length === 1) {
-        currentSession.title = prompt.slice(0, 30) + (prompt.length > 30 ? '...' : '');
+        const titleSource = rawPrompt || attachedFiles[0]?.name || 'Analyse de document';
+        currentSession.title = titleSource.slice(0, 30) + (titleSource.length > 30 ? '...' : '');
         this.renderSessionsList();
-        // Génération du titre intelligent en arrière-plan avec Ollama
-        this.autoGenerateSessionTitle(currentSession, prompt);
+        this.autoGenerateSessionTitle(currentSession, titleSource);
       }
     }
 
-    // Reset input
+    // Reset input & vider les fichiers joints
     this.promptInput.value = '';
     this.promptInput.style.height = 'auto';
     if (this.charCountEl) this.charCountEl.textContent = '0 caractères';
+    this.clearAttachments();
 
     // 2. Ajouter le message assistant vide prêt pour le stream
     const assistantMsgIndex = this.messages.length;
@@ -624,9 +1474,6 @@ class OllamaFullWidget {
     await this.streamAssistantResponse(assistantMsgIndex);
   }
 
-  /**
-   * Régénère la réponse de l'assistant (ou rejoue le prompt associé)
-   */
   async regenerateResponse(assistantMsgIndex) {
     if (this.isGenerating) {
       this.stopGeneration();
@@ -635,11 +1482,9 @@ class OllamaFullWidget {
 
     if (assistantMsgIndex < 0 || assistantMsgIndex >= this.messages.length) return;
 
-    // Si on clique sur un message assistant, on réinitialise son contenu
     const now = new Date();
     const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-    // Tronquer les messages suivants s'il y en avait
     this.messages = this.messages.slice(0, assistantMsgIndex + 1);
     this.messages[assistantMsgIndex] = {
       role: 'assistant',
@@ -652,25 +1497,19 @@ class OllamaFullWidget {
     await this.streamAssistantResponse(assistantMsgIndex);
   }
 
-  /**
-   * Place le prompt utilisateur dans la zone de saisie pour modification ou rejeu direct
-   */
   editOrReplayPrompt(userMsgIndex) {
     if (userMsgIndex < 0 || userMsgIndex >= this.messages.length) return;
     const msg = this.messages[userMsgIndex];
     if (!msg || msg.role !== 'user') return;
 
     if (this.promptInput) {
-      this.promptInput.value = msg.content;
+      this.promptInput.value = msg.displayContent || msg.content;
       this.promptInput.focus();
       this.promptInput.dispatchEvent(new Event('input'));
       this.promptInput.scrollIntoView({ behavior: 'smooth' });
     }
   }
 
-  /**
-   * Copie le texte d'un message dans le presse-papiers
-   */
   copyMessageContent(index, btn) {
     if (index < 0 || index >= this.messages.length) return;
     const msg = this.messages[index];
@@ -691,27 +1530,29 @@ class OllamaFullWidget {
   }
 
   /**
-   * Cœur d'exécution du streaming SSE pour un message assistant
+   * Cœur d'exécution du streaming SSE avec injection du System Prompt et Support Multi-modal Images
    */
   async streamAssistantResponse(assistantMsgIndex) {
     if (!this.selectedModel) return;
 
-    // Récupérer le system prompt selon persona
-    let systemPrompt = this.personas[this.currentPersona]?.system || '';
-    if (this.currentPersona === 'custom' && this.customSystemInput) {
-      systemPrompt = this.customSystemInput.value.trim() || this.personas.general.system;
-    }
-
+    // Récupérer le Prompt Système actif
+    const systemPrompt = this.getCurrentSystemPrompt();
     const currentSession = this.sessions.find(s => s.id === this.currentSessionId);
 
     // Activer l'état de génération
     this.setGeneratingState(true);
 
-    // Construire le payload de messages pour le multi-tour (exclut le message assistant vide en cours)
+    // Construire le payload de messages pour Ollama Chat (avec images pour modèles vision si présentes)
     const historyToInclude = this.messages.slice(0, assistantMsgIndex);
     const chatPayload = [
       { role: 'system', content: systemPrompt },
-      ...historyToInclude.map(m => ({ role: m.role, content: m.content }))
+      ...historyToInclude.map(m => {
+        const msgObj = { role: m.role, content: m.content };
+        if (m.images && Array.isArray(m.images) && m.images.length > 0) {
+          msgObj.images = m.images;
+        }
+        return msgObj;
+      })
     ];
 
     try {
@@ -731,7 +1572,15 @@ class OllamaFullWidget {
       });
 
       if (!response.ok) {
-        throw new Error(`Erreur serveur (${response.status})`);
+        if (response.status === 413) {
+          throw new Error('Le fichier ou le contenu envoyé est trop volumineux pour le serveur (Erreur HTTP 413 Payload Too Large).');
+        }
+        let errMsg = `Erreur serveur (${response.status})`;
+        try {
+          const errData = await response.json();
+          if (errData.error) errMsg = `Erreur (${response.status}) : ${errData.error}`;
+        } catch {}
+        throw new Error(errMsg);
       }
 
       const reader = response.body.getReader();
@@ -779,7 +1628,6 @@ class OllamaFullWidget {
       }
       this.attachCopyCodeButtons();
 
-      // Sauvegarder dans la session courante
       if (currentSession) {
         currentSession.messages = this.messages;
         this.saveSessionsToStorage();
@@ -851,7 +1699,7 @@ class OllamaFullWidget {
       if (pre.querySelector('.code-copy-btn')) return;
 
       const btn = document.createElement('button');
-      btn.className = 'code-copy-btn absolute top-2 right-2 px-2.5 py-1 text-[10px] font-mono font-semibold rounded-lg bg-zinc-800/90 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-all border border-zinc-700/60';
+      btn.className = 'code-copy-btn absolute top-2 right-2 px-2.5 py-1 text-[10px] font-mono font-semibold rounded-lg bg-zinc-800/90 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-all border border-zinc-700/60 cursor-pointer';
       btn.textContent = 'Copier';
 
       pre.style.position = 'relative';
@@ -865,7 +1713,7 @@ class OllamaFullWidget {
           btn.className = 'code-copy-btn absolute top-2 right-2 px-2.5 py-1 text-[10px] font-mono font-semibold rounded-lg bg-emerald-600 text-white transition-all';
           setTimeout(() => {
             btn.textContent = 'Copier';
-            btn.className = 'code-copy-btn absolute top-2 right-2 px-2.5 py-1 text-[10px] font-mono font-semibold rounded-lg bg-zinc-800/90 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-all border border-zinc-700/60';
+            btn.className = 'code-copy-btn absolute top-2 right-2 px-2.5 py-1 text-[10px] font-mono font-semibold rounded-lg bg-zinc-800/90 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-all border border-zinc-700/60 cursor-pointer';
           }, 2000);
         });
       });
@@ -874,3 +1722,4 @@ class OllamaFullWidget {
 }
 
 window.OllamaFullWidget = OllamaFullWidget;
+

@@ -953,32 +953,70 @@
 
               <!-- Sélecteur de Persona / Mode -->
               <div class="space-y-1.5">
-                <label class="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                  Rôle / Persona
-                </label>
+                <div class="flex items-center justify-between">
+                  <label class="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                    Rôle / Persona
+                  </label>
+                  <button
+                    id="full-ollama-new-persona-btn"
+                    type="button"
+                    class="text-[10px] text-purple-400 hover:text-purple-300 font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Créer un nouveau persona avec un prompt personnalisé"
+                  >
+                    <span>+ Nouveau</span>
+                  </button>
+                </div>
                 <select
                   id="full-ollama-persona"
                   class="w-full px-3 py-2 text-xs rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 focus:border-brand-500 outline-none cursor-pointer"
                 >
-                  <option value="general" selected>⚡ Assistant Général</option>
-                  <option value="coder">💻 Expert Code & Architecture</option>
-                  <option value="writer">📝 Rédacteur & Synthèse</option>
-                  <option value="devops">🛠️ DevOps & Terminal</option>
-                  <option value="custom">⚙️ Personnalisé (Prompt sur-mesure)</option>
+                  <!-- Les options sont générées dynamiquement dans ollamaFullWidget.js -->
                 </select>
               </div>
 
-              <!-- System Prompt Personnalisé -->
-              <div id="full-ollama-custom-system-container" class="hidden space-y-1.5">
-                <label class="block text-[11px] font-semibold text-zinc-400">
-                  Instruction Système (System Prompt)
-                </label>
+              <!-- Gestion du System Prompt (Toujours visible et éditable) -->
+              <div id="full-ollama-custom-system-container" class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label class="block text-[11px] font-semibold text-zinc-400">
+                    Prompt Système
+                  </label>
+                  <div class="flex items-center gap-2">
+                    <button
+                      id="full-ollama-reset-system-btn"
+                      type="button"
+                      class="text-[10px] text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+                      title="Réinitialiser au prompt par défaut de ce rôle"
+                    >
+                      ↺ Défaut
+                    </button>
+                    <button
+                      id="full-ollama-save-persona-btn"
+                      type="button"
+                      class="text-[10px] text-brand-400 hover:text-brand-300 font-semibold transition-colors cursor-pointer flex items-center gap-0.5"
+                      title="Sauvegarder ce prompt pour ce persona"
+                    >
+                      <span>💾 Sauvegarder</span>
+                    </button>
+                    <button
+                      id="full-ollama-delete-persona-btn"
+                      type="button"
+                      class="hidden text-[10px] text-rose-400 hover:text-rose-300 font-semibold transition-colors cursor-pointer"
+                      title="Supprimer ce persona personnalisé"
+                    >
+                      ✕ Supprimer
+                    </button>
+                  </div>
+                </div>
                 <textarea
                   id="full-ollama-custom-system"
                   rows="3"
                   placeholder="Tu es un assistant spécialisé dans..."
-                  class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:border-brand-500 outline-none resize-none font-mono"
+                  class="w-full p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:border-purple-500 outline-none resize-y font-mono leading-relaxed transition-all shadow-inner"
                 ></textarea>
+                <div class="flex items-center justify-between text-[10px] text-zinc-500 px-0.5 font-mono">
+                  <span id="full-ollama-system-status" class="text-zinc-400">Actif en session</span>
+                  <span id="full-ollama-system-char-count">0 car.</span>
+                </div>
               </div>
 
               <!-- Paramètre Température -->
@@ -1048,6 +1086,18 @@
                   <p class="text-[10px] text-zinc-400 font-mono">Modèle local avec mémoire multi-tours</p>
                 </div>
               </div>
+
+              <!-- Badge Persona & Prompt Système Actif -->
+              <button
+                id="full-ollama-active-persona-badge"
+                type="button"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-300 text-xs font-semibold transition-all cursor-pointer shadow-sm group"
+                title="Cliquer pour afficher / modifier le prompt système"
+              >
+                <span id="full-ollama-active-persona-icon" class="text-sm">⚡</span>
+                <span id="full-ollama-active-persona-name" class="font-medium">Assistant Général</span>
+                <span class="text-[10px] text-purple-400/70 font-mono hidden sm:inline group-hover:text-purple-300">⚙️ Éditer</span>
+              </button>
             </div>
 
             <!-- Flux des Messages -->
@@ -1101,36 +1151,95 @@
               </div>
             </div>
 
-            <!-- Barre de Saisie Fixe en Bas -->
-            <div class="p-4 border-t border-zinc-800/80 bg-zinc-900/90 backdrop-blur space-y-2">
-              <div class="relative flex items-end gap-2 bg-zinc-950/80 border border-zinc-800 rounded-2xl p-2 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition-all shadow-inner">
+            <!-- Barre de Saisie Fixe en Bas avec Gestion de Fichiers & Drag-and-Drop -->
+            <div id="full-ollama-input-container" class="p-4 border-t border-zinc-800/80 bg-zinc-900/90 backdrop-blur space-y-2 relative">
+              
+              <!-- Zone de prévisualisation des fichiers joints -->
+              <div id="full-ollama-attachments-list" class="hidden flex flex-col gap-1.5 pb-1 animate-fade-in"></div>
+
+              <!-- Bannière d'avertissement de limites de fichiers -->
+              <div id="full-ollama-file-notice" class="hidden p-2.5 px-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-2 animate-fade-in shadow-sm">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="text-sm shrink-0">⚠️</span>
+                  <div id="full-ollama-file-notice-text" class="text-[11px] leading-tight text-amber-200"></div>
+                </div>
+                <button
+                  type="button"
+                  onclick="document.getElementById('full-ollama-file-notice').classList.add('hidden')"
+                  class="text-amber-400 hover:text-white p-1 rounded-lg hover:bg-amber-500/20 transition-colors cursor-pointer shrink-0"
+                  title="Fermer cet avertissement"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+              </div>
+
+              <!-- Boîte de saisie avec drag & drop -->
+              <div id="full-ollama-drop-zone" class="relative flex flex-col gap-1.5 bg-zinc-950/80 border border-zinc-800 rounded-2xl p-2.5 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition-all shadow-inner">
+                
                 <textarea
                   id="full-ollama-prompt-input"
                   rows="2"
-                  placeholder="Posez votre question à Ollama... (Entrée pour envoyer, Maj+Entrée pour nouvelle ligne)"
-                  class="w-full p-2 bg-transparent text-xs text-zinc-100 placeholder-zinc-500 outline-none resize-none max-h-44"
+                  placeholder="Posez votre question, glissez des fichiers ou collez du code / des captures d'écran... (Entrée pour envoyer, Maj+Entrée pour nouvelle ligne)"
+                  class="w-full p-1 bg-transparent text-xs text-zinc-100 placeholder-zinc-500 outline-none resize-none max-h-44"
                 ></textarea>
 
-                <div class="flex items-center gap-1.5 shrink-0 pb-1">
-                  <!-- Bouton Stop (masqué par défaut) -->
-                  <button
-                    id="full-ollama-stop-btn"
-                    class="hidden px-3.5 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 font-bold text-xs flex items-center gap-1 transition-all border border-rose-500/30 active:scale-95"
-                    title="Arrêter la réponse"
-                  >
-                    <span class="w-2 h-2 rounded-sm bg-rose-400"></span>
-                    <span>Stop</span>
-                  </button>
+                <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-zinc-800/60">
+                  <!-- Actions Gauche : Joindre des fichiers & Raccourcis -->
+                  <div class="flex items-center gap-1.5">
+                    <input
+                      type="file"
+                      id="full-ollama-file-input"
+                      multiple
+                      accept=".txt,.md,.markdown,.js,.jsx,.ts,.tsx,.py,.json,.yaml,.yml,.css,.scss,.html,.xml,.sh,.bash,.zsh,.sql,.csv,.log,.env,.toml,.ini,.rs,.go,.java,.c,.cpp,.h,.php,.rb,.swift,.kt,.png,.jpg,.jpeg,.webp,.svg,.pdf"
+                      class="hidden"
+                    />
+                    <button
+                      id="full-ollama-attach-btn"
+                      type="button"
+                      class="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-purple-300 border border-zinc-800 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm group"
+                      title="Joindre des fichiers de code, texte ou images (ou glisser-déposer / Coller avec Cmd+V)"
+                    >
+                      <svg class="w-4 h-4 text-purple-400 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                      <span class="text-[11px]">Joindre fichiers</span>
+                    </button>
+                    <span id="full-ollama-drop-hint" class="text-[10px] text-zinc-500 hidden sm:inline font-mono">
+                      Glisser-déposer &amp; Copier/Coller supportés
+                    </span>
+                  </div>
 
-                  <!-- Bouton Envoyer -->
-                  <button
-                    id="full-ollama-send-btn"
-                    class="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-brand-500/20 transition-all"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                    <span>Envoyer</span>
-                  </button>
+                  <!-- Actions Droite : Stop / Envoyer -->
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <!-- Bouton Stop (masqué par défaut) -->
+                    <button
+                      id="full-ollama-stop-btn"
+                      type="button"
+                      class="hidden px-3.5 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 font-bold text-xs flex items-center gap-1 transition-all border border-rose-500/30 active:scale-95 cursor-pointer"
+                      title="Arrêter la réponse"
+                    >
+                      <span class="w-2 h-2 rounded-sm bg-rose-400"></span>
+                      <span>Stop</span>
+                    </button>
+
+                    <!-- Bouton Envoyer -->
+                    <button
+                      id="full-ollama-send-btn"
+                      type="button"
+                      class="px-4 py-1.5 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-brand-500/20 transition-all cursor-pointer"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                      <span>Envoyer</span>
+                    </button>
+                  </div>
                 </div>
+
+                <!-- Overlay Glisser-Déposer -->
+                <div id="full-ollama-drag-overlay" class="hidden absolute inset-0 bg-purple-950/85 border-2 border-dashed border-purple-400 rounded-2xl flex items-center justify-center backdrop-blur-xs z-20 pointer-events-none transition-all">
+                  <div class="flex items-center gap-2 text-purple-200 font-bold text-xs animate-pulse">
+                    <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                    <span>Déposez vos fichiers ici pour les analyser</span>
+                  </div>
+                </div>
+
               </div>
 
               <div class="flex items-center justify-between text-[10px] text-zinc-500 px-1">
@@ -1141,6 +1250,106 @@
 
           </main>
 
+        </div>
+        
+        <!-- Fenêtre Modale de Création d'un Nouveau Persona / Prompt Système -->
+        <div id="ollama-persona-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in">
+          <div class="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
+            <!-- En-tête Modale -->
+            <div class="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
+              <div class="flex items-center gap-2.5">
+                <div class="p-2 rounded-xl bg-purple-500/10 text-purple-400 text-base">
+                  ✨
+                </div>
+                <div>
+                  <h3 class="font-bold text-sm text-white">Nouveau Persona & Rôle IA</h3>
+                  <p class="text-[10px] text-zinc-400">Définissez une personnalité et une instruction système dédiée</p>
+                </div>
+              </div>
+              <button
+                id="ollama-persona-modal-close"
+                type="button"
+                class="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all cursor-pointer"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            <!-- Formulaire Persona -->
+            <form id="ollama-persona-form" class="p-5 space-y-4">
+              <div class="grid grid-cols-4 gap-3">
+                <div class="col-span-1 space-y-1">
+                  <label class="block text-[11px] font-semibold text-zinc-400">Icône</label>
+                  <input
+                    id="ollama-persona-icon-input"
+                    type="text"
+                    maxlength="4"
+                    value="🤖"
+                    class="w-full text-center py-2 text-base rounded-xl bg-zinc-950 border border-zinc-800 text-white focus:border-purple-500 outline-none"
+                  />
+                </div>
+                <div class="col-span-3 space-y-1">
+                  <label class="block text-[11px] font-semibold text-zinc-400">Nom du Persona</label>
+                  <input
+                    id="ollama-persona-name-input"
+                    type="text"
+                    required
+                    placeholder="Ex: Expert Rust, Rédacteur SEO, Tuteur..."
+                    class="w-full px-3 py-2 text-xs rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 placeholder-zinc-500 focus:border-purple-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <!-- Suggestions d'icônes rapides -->
+              <div class="space-y-1">
+                <span class="text-[10px] text-zinc-400">Icônes suggérées :</span>
+                <div class="flex gap-1.5 flex-wrap" id="ollama-persona-icon-picker">
+                  <button type="button" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-purple-600/30 hover:border-purple-500/50 border border-zinc-700 text-xs cursor-pointer transition-all">⚡</button>
+                  <button type="button" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-purple-600/30 hover:border-purple-500/50 border border-zinc-700 text-xs cursor-pointer transition-all">💻</button>
+                  <button type="button" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-purple-600/30 hover:border-purple-500/50 border border-zinc-700 text-xs cursor-pointer transition-all">📝</button>
+                  <button type="button" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-purple-600/30 hover:border-purple-500/50 border border-zinc-700 text-xs cursor-pointer transition-all">🛠️</button>
+                  <button type="button" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-purple-600/30 hover:border-purple-500/50 border border-zinc-700 text-xs cursor-pointer transition-all">🌐</button>
+                  <button type="button" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-purple-600/30 hover:border-purple-500/50 border border-zinc-700 text-xs cursor-pointer transition-all">🔍</button>
+                  <button type="button" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-purple-600/30 hover:border-purple-500/50 border border-zinc-700 text-xs cursor-pointer transition-all">🚀</button>
+                  <button type="button" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-purple-600/30 hover:border-purple-500/50 border border-zinc-700 text-xs cursor-pointer transition-all">🧠</button>
+                  <button type="button" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-purple-600/30 hover:border-purple-500/50 border border-zinc-700 text-xs cursor-pointer transition-all">🛡️</button>
+                  <button type="button" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-purple-600/30 hover:border-purple-500/50 border border-zinc-700 text-xs cursor-pointer transition-all">🎨</button>
+                  <button type="button" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-purple-600/30 hover:border-purple-500/50 border border-zinc-700 text-xs cursor-pointer transition-all">🧪</button>
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <div class="flex items-center justify-between">
+                  <label class="block text-[11px] font-semibold text-zinc-400">Instruction Système (System Prompt)</label>
+                  <span id="ollama-persona-prompt-count" class="text-[10px] font-mono text-zinc-500">0 car.</span>
+                </div>
+                <textarea
+                  id="ollama-persona-prompt-input"
+                  required
+                  rows="5"
+                  placeholder="Tu es un assistant IA spécialisé dans... Tu réponds toujours de façon concise, précise..."
+                  class="w-full p-3 text-xs rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 placeholder-zinc-500 focus:border-purple-500 outline-none resize-y font-mono leading-relaxed shadow-inner"
+                ></textarea>
+              </div>
+
+              <!-- Actions Formulaire -->
+              <div class="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
+                <button
+                  id="ollama-persona-modal-cancel"
+                  type="button"
+                  class="px-3.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  class="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md shadow-purple-500/20 cursor-pointer"
+                >
+                  Créer le Persona
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
 
