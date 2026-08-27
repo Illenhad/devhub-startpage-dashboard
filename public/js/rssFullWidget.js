@@ -828,7 +828,15 @@ class RssFullWidget {
                   onerror="this.parentElement.style.display='none'"
                 />
               </div>
-            ` : ''}
+            ` : (isWatch ? `
+              <div class="w-full h-28 rounded-2xl overflow-hidden notif-box-soft border border-zinc-800/80 relative flex items-center justify-center p-3 text-center transition-all group-hover:border-zinc-700">
+                <div class="flex flex-col items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                  <span class="text-2xl select-none">🎯</span>
+                  <span class="text-[11px] font-bold text-zinc-200 tracking-wide">${a.watchKeyword || 'Sujet'}</span>
+                  <span class="text-[10px] notif-text-accent font-mono">${a.author || 'Veille Tech'}</span>
+                </div>
+              </div>
+            ` : '')}
 
             <!-- Titre de l'article -->
             <h4 class="font-bold text-xs sm:text-sm ${isRead ? 'text-zinc-400 font-medium' : 'text-zinc-100 font-bold'} group-hover:text-brand-400 transition-colors leading-snug">

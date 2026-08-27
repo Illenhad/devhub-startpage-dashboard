@@ -5,6 +5,112 @@ import { getRssFeeds, getWatchKeywords, cleanupOldReadArticles } from './dbServi
 const watchCache = new Map();
 const WATCH_CACHE_TTL_MS = 10 * 60 * 1000;
 
+// Cache des métadonnées et images d'articles résolus (TTL: 24 heures)
+const articleMetadataCache = new Map();
+const ARTICLE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Décode un lien Google News RSS et extrait l'image d'en-tête (og:image) du média source original
+ */
+export async function resolveGoogleNewsArticle(googleUrl) {
+  if (!googleUrl || typeof googleUrl !== 'string') return null;
+
+  // Cache mémoire instantané
+  const cached = articleMetadataCache.get(googleUrl);
+  if (cached && (Date.now() - cached.timestamp < ARTICLE_CACHE_TTL_MS)) {
+    return cached.data;
+  }
+
+  // Si ce n'est pas une URL Google News, rien à décoder
+  if (!googleUrl.includes('news.google.com')) {
+    return { decodedUrl: googleUrl, image: null };
+  }
+
+  try {
+    const urlObj = new URL(googleUrl);
+    const pathParts = urlObj.pathname.split('/');
+    const base64Str = pathParts[pathParts.length - 1];
+
+    if (!base64Str) return null;
+
+    // 1. Récupération des jetons de signature et horodatage
+    const pageRes = await fetch(`https://news.google.com/rss/articles/${base64Str}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+      },
+      signal: AbortSignal.timeout(3000)
+    });
+
+    if (!pageRes.ok) return null;
+    const html = await pageRes.text();
+    const sigMatch = html.match(/data-n-a-sg="([^"]+)"/);
+    const tsMatch = html.match(/data-n-a-ts="([^"]+)"/);
+
+    if (!sigMatch || !tsMatch) return null;
+
+    const signature = sigMatch[1];
+    const timestamp = tsMatch[1];
+
+    // 2. Appel batchexecute RPC (Fbv4je) pour obtenir l'URL finale
+    const payload = [
+      "Fbv4je",
+      `["garturlreq",[["X","X",["X","X"],null,null,1,1,"US:en",null,1,null,null,null,null,null,0,1],"X","X",1,[1,1,1],1,1,null,0,0,null,0],"${base64Str}",${timestamp},"${signature}"]`
+    ];
+
+    const batchRes = await fetch("https://news.google.com/_/DotsSplashUi/data/batchexecute", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+      },
+      body: `f.req=${encodeURIComponent(JSON.stringify([[payload]]))}`,
+      signal: AbortSignal.timeout(3000)
+    });
+
+    if (!batchRes.ok) return null;
+    const text = await batchRes.text();
+    const parts = text.split("\n\n");
+    if (parts.length < 2) return null;
+
+    const parsedData = JSON.parse(parts[1]);
+    const innerJson = JSON.parse(parsedData[0][2]);
+    const decodedUrl = innerJson[1];
+
+    if (!decodedUrl) return null;
+
+    // 3. Extraction de l'image (OpenGraph / Twitter) depuis le site source réel
+    let image = null;
+    try {
+      const artRes = await fetch(decodedUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        },
+        signal: AbortSignal.timeout(3000)
+      });
+
+      if (artRes.ok) {
+        const artHtml = await artRes.text();
+        const ogMatch = artHtml.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+                        artHtml.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i) ||
+                        artHtml.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i);
+        if (ogMatch && ogMatch[1]) {
+          image = ogMatch[1].trim();
+          if (image.startsWith('/')) {
+            const destUrlObj = new URL(decodedUrl);
+            image = `${destUrlObj.origin}${image}`;
+          }
+        }
+      }
+    } catch {}
+
+    const result = { decodedUrl, image };
+    articleMetadataCache.set(googleUrl, { data: result, timestamp: Date.now() });
+    return result;
+  } catch (err) {
+    return null;
+  }
+}
+
 /**
  * Récupère les actualités fraîches pour un mot-clé donné via Google News RSS FR (7 derniers jours max)
  */
@@ -58,6 +164,19 @@ export async function fetchKeywordNews(keyword) {
 
     // Tri par date la plus récente
     items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    // Résolution asynchrone en parallèle des images (OpenGraph) et des URLs directes des médias
+    const resolvePromises = items.slice(0, 15).map(async (item) => {
+      try {
+        const meta = await resolveGoogleNewsArticle(item.link);
+        if (meta) {
+          if (meta.decodedUrl) item.link = meta.decodedUrl;
+          if (meta.image) item.image = meta.image;
+        }
+      } catch {}
+    });
+
+    await Promise.allSettled(resolvePromises);
 
     const result = {
       keyword: cleanKeyword,
