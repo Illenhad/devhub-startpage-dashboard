@@ -1048,3 +1048,25 @@ html[data-theme-preset="standard"] #full-articles-list [class*="purple-"] {
   background-color: rgba(99, 102, 241, 0.15) !important;
 }
 
+/* ==========================================================================
+   VERROUILLAGE DU DÉFILEMENT D'ARRIÈRE-PLAN (Modales)
+   ========================================================================== */
+
+html.modal-open,
+body.modal-open {
+  overflow: hidden !important;
+  overscroll-behavior: contain;
+}
+
+#rss-reader-modal,
+#docker-log-modal,
+#ollama-persona-modal {
+  overscroll-behavior: contain;
+}
+
+#rss-reader-modal-body,
+#docker-log-modal-body {
+  overscroll-behavior: contain;
+}
+
+

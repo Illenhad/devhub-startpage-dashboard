@@ -145,6 +145,11 @@ function initTabs() {
   const views = document.querySelectorAll('.app-view');
 
   function switchTab(targetId) {
+    // Fermer toute modale de lecture éventuellement ouverte
+    if (window.rssFullWidget && typeof window.rssFullWidget.closeReaderModal === 'function') {
+      window.rssFullWidget.closeReaderModal();
+    }
+
     // Masquer toutes les vues
     views.forEach(v => {
       if (v.id === `view-${targetId}`) {

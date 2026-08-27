@@ -10,6 +10,66 @@ const articleMetadataCache = new Map();
 const ARTICLE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * Extrait le contenu éditorial propre d'un article HTML (Mode Lecteur)
+ */
+export function extractCleanArticleContent(html, baseUrl = '') {
+  if (!html || typeof html !== 'string') return '';
+
+  // 1. Suppression des balises techniques et polluantes
+  let clean = html
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, '')
+    .replace(/<noscript\b[\s\S]*?<\/noscript>/gi, '')
+    .replace(/<svg\b[\s\S]*?<\/svg>/gi, '')
+    .replace(/<nav\b[\s\S]*?<\/nav>/gi, '')
+    .replace(/<header\b[\s\S]*?<\/header>/gi, '')
+    .replace(/<footer\b[\s\S]*?<\/footer>/gi, '')
+    .replace(/<aside\b[\s\S]*?<\/aside>/gi, '')
+    .replace(/<form\b[\s\S]*?<\/form>/gi, '')
+    .replace(/<dialog\b[\s\S]*?<\/dialog>/gi, '');
+
+  // 2. Recherche du conteneur d'article principal
+  const candidateMatch = 
+    clean.match(/<article[^>]*>([\s\S]*?)<\/article>/i) ||
+    clean.match(/<div[^>]+class=["'][^"']*(?:article[-_]content|entry[-_]content|post[-_]content|story[-_]body|article__body|content[-_]article|single[-_]content|article[-_]text)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i) ||
+    clean.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
+
+  const containerHtml = candidateMatch ? candidateMatch[1] : clean;
+
+  // 3. Extraction ordonnée des éléments éditoriaux
+  const elementRegex = /<(p|h2|h3|h4|blockquote|ul|ol)[^>]*>([\s\S]*?)<\/\1>/gi;
+  const elements = [];
+  let match;
+
+  while ((match = elementRegex.exec(containerHtml)) !== null) {
+    const tag = match[1].toLowerCase();
+    let inner = match[2].trim();
+
+    // Filtre des paragraphes trop courts ou bannières promotionnelles
+    const textOnly = inner.replace(/<[^>]+>/g, '').trim();
+    if (textOnly.length < 25 && tag === 'p') continue;
+    if (/cookie|partager sur|abonnez-vous|newsletter|lire aussi|publicit|suivez-nous/i.test(textOnly) && textOnly.length < 90) continue;
+
+    // Conserver les balises utiles
+    inner = inner.replace(/<(?!\/?(strong|b|em|i|a|code|span)\b)[^>]+>/gi, '');
+
+    if (tag === 'p') {
+      elements.push(`<p class="mb-4 text-zinc-200 leading-relaxed text-sm sm:text-base">${inner}</p>`);
+    } else if (tag === 'h2') {
+      elements.push(`<h2 class="text-base sm:text-lg font-bold text-white mt-6 mb-3">${inner}</h2>`);
+    } else if (tag === 'h3') {
+      elements.push(`<h3 class="text-sm sm:text-base font-bold text-zinc-100 mt-5 mb-2">${inner}</h3>`);
+    } else if (tag === 'blockquote') {
+      elements.push(`<blockquote class="border-l-4 border-brand-500 pl-4 py-1.5 italic text-zinc-300 my-4 bg-zinc-950/40 rounded-r-xl">${inner}</blockquote>`);
+    } else if (tag === 'ul' || tag === 'ol') {
+      elements.push(`<div class="my-3 text-zinc-200 text-sm leading-relaxed">${inner}</div>`);
+    }
+  }
+
+  return elements.join('\n');
+}
+
+/**
  * Décode un lien Google News RSS et extrait l'image d'en-tête (og:image) du média source original
  */
 export async function resolveGoogleNewsArticle(googleUrl) {
@@ -23,7 +83,7 @@ export async function resolveGoogleNewsArticle(googleUrl) {
 
   // Si ce n'est pas une URL Google News, rien à décoder
   if (!googleUrl.includes('news.google.com')) {
-    return { decodedUrl: googleUrl, image: null };
+    return { decodedUrl: googleUrl, image: null, content: null };
   }
 
   try {
@@ -78,8 +138,9 @@ export async function resolveGoogleNewsArticle(googleUrl) {
 
     if (!decodedUrl) return null;
 
-    // 3. Extraction de l'image (OpenGraph / Twitter) depuis le site source réel
+    // 3. Extraction de l'image (OpenGraph / Twitter) et du contenu intégral depuis le site source réel
     let image = null;
+    let content = null;
     try {
       const artRes = await fetch(decodedUrl, {
         headers: {
@@ -100,10 +161,16 @@ export async function resolveGoogleNewsArticle(googleUrl) {
             image = `${destUrlObj.origin}${image}`;
           }
         }
+
+        // Extraction intégrale de l'article (mode lecteur automatique)
+        const extracted = extractCleanArticleContent(artHtml, decodedUrl);
+        if (extracted && extracted.length > 100) {
+          content = extracted;
+        }
       }
     } catch {}
 
-    const result = { decodedUrl, image };
+    const result = { decodedUrl, image, content };
     articleMetadataCache.set(googleUrl, { data: result, timestamp: Date.now() });
     return result;
   } catch (err) {
@@ -172,6 +239,7 @@ export async function fetchKeywordNews(keyword) {
         if (meta) {
           if (meta.decodedUrl) item.link = meta.decodedUrl;
           if (meta.image) item.image = meta.image;
+          if (meta.content) item.content = meta.content;
         }
       } catch {}
     });

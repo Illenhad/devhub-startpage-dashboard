@@ -128,6 +128,19 @@ class RssFullWidget {
       this.readerModalEl.addEventListener('click', (e) => {
         if (e.target === this.readerModalEl) this.closeReaderModal();
       });
+
+      // Empêcher la propagation du défilement lorsque le curseur survole l'arrière-plan sombre
+      this.readerModalEl.addEventListener('wheel', (e) => {
+        if (e.target === this.readerModalEl) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      this.readerModalEl.addEventListener('touchmove', (e) => {
+        if (e.target === this.readerModalEl) {
+          e.preventDefault();
+        }
+      }, { passive: false });
     }
 
     // Navigation précédent / suivant dans la modal
@@ -1058,6 +1071,8 @@ class RssFullWidget {
       // Si le contenu est court (moins de 250 caractères, typique des flux limités aux résumés comme Le Monde)
       const textOnly = contentHtml.replace(/<[^>]+>/g, '').trim();
       let sourceCalloutHtml = '';
+      let autoLoadIndicatorHtml = '';
+
       if (textOnly.length < 250) {
         sourceCalloutHtml = `
           <div class="mt-6 p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
@@ -1065,7 +1080,7 @@ class RssFullWidget {
               <span class="font-bold text-zinc-200 flex items-center gap-1.5">
                 <span>🔒</span> <span>Article complet sur ${article.feedName || 'le site source'}</span>
               </span>
-              <p class="text-[11px] text-zinc-400">Ce média ne diffuse qu'un extrait dans son flux RSS. L'article complet est à retrouver sur leur site.</p>
+              <p class="text-[11px] text-zinc-400">Ce média ne diffuse qu'un extrait dans son flux RSS ou est sous paywall.</p>
             </div>
             <a
               href="${article.link}"
@@ -1073,14 +1088,47 @@ class RssFullWidget {
               rel="noopener noreferrer"
               class="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-95 text-white font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 shadow-md shadow-brand-500/20"
             >
-              <span>Lire la suite</span>
+              <span>Ouvrir sur le site</span>
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
             </a>
           </div>
         `;
+
+        autoLoadIndicatorHtml = `
+          <div id="reader-autoload-indicator" class="mt-4 p-3.5 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 flex items-center justify-between gap-3 text-xs animate-pulse">
+            <div class="flex items-center gap-2.5 text-zinc-300 font-semibold">
+              <span class="w-2 h-2 rounded-full notif-badge-dot animate-ping"></span>
+              <span>Chargement automatique de l'article complet...</span>
+            </div>
+            <span class="text-[10px] text-zinc-500 font-mono">Mode Lecteur</span>
+          </div>
+        `;
+
+        // Déclenchement automatique et fluide de la récupération du texte intégral
+        const currentIdx = currentIndex;
+        fetch(`/api/rss/full-content?url=${encodeURIComponent(article.link)}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.success && data.content && data.content.length > 80) {
+              article.content = data.content;
+              if (!article.image && data.image) {
+                article.image = data.image;
+              }
+              if (this.currentArticleIndex === currentIdx) {
+                this.renderArticleModalContent(article, currentIdx, totalCount);
+              }
+            } else {
+              const loader = document.getElementById('reader-autoload-indicator');
+              if (loader) loader.outerHTML = sourceCalloutHtml;
+            }
+          })
+          .catch(() => {
+            const loader = document.getElementById('reader-autoload-indicator');
+            if (loader) loader.outerHTML = sourceCalloutHtml;
+          });
       }
 
-      this.readerModalBodyEl.innerHTML = coverImageHtml + contentHtml + sourceCalloutHtml;
+      this.readerModalBodyEl.innerHTML = coverImageHtml + contentHtml + (autoLoadIndicatorHtml || sourceCalloutHtml);
       this.readerModalBodyEl.scrollTop = 0;
     }
 
@@ -1100,6 +1148,8 @@ class RssFullWidget {
 
     if (this.readerModalEl) {
       this.readerModalEl.classList.remove('hidden');
+      document.documentElement.classList.add('modal-open');
+      document.body.classList.add('modal-open');
     }
   }
 
@@ -1107,6 +1157,8 @@ class RssFullWidget {
     if (this.readerModalEl) {
       this.readerModalEl.classList.add('hidden');
     }
+    document.documentElement.classList.remove('modal-open');
+    document.body.classList.remove('modal-open');
   }
 }
 
