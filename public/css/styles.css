@@ -444,6 +444,12 @@ html.light .markdown-body blockquote {
   color: #64748b !important;
 }
 
+/* Logo DevHub adaptable aux Thèmes */
+.app-logo-badge {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
 /* ==========================================================================
    GESTION DES AMBIANCES & THÈMES DE TRAVAIL (Code, Lecture, Performance)
    ========================================================================== */
@@ -508,6 +514,11 @@ html.dark[data-theme-preset="code"] [class*="bg-indigo-500/10"] {
 /* Jauges Code */
 html.dark[data-theme-preset="code"] [id$="-bar"] {
   background: linear-gradient(90deg, #10b981, #06b6d4) !important;
+}
+
+html[data-theme-preset="code"] .app-logo-badge {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4) !important;
 }
 
 /* Mode Clair - Thème Code */
@@ -577,8 +588,14 @@ html.dark[data-theme-preset="reading"] .text-brand-400 {
   color: #fbbf24 !important;
 }
 
+/* Jauges Lecture */
 html.dark[data-theme-preset="reading"] [id$="-bar"] {
   background: linear-gradient(90deg, #d97706, #f59e0b) !important;
+}
+
+html[data-theme-preset="reading"] .app-logo-badge {
+  background: linear-gradient(135deg, #d97706, #b45309) !important;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.35) !important;
 }
 
 /* Mode Clair - Thème Lecture (Papier Crème & Encre douce) */
@@ -664,6 +681,11 @@ html.dark[data-theme-preset="performance"] .text-brand-400 {
 html.dark[data-theme-preset="performance"] [id$="-bar"] {
   background: linear-gradient(90deg, #06b6d4, #ec4899, #facc15) !important;
   box-shadow: 0 0 10px rgba(236, 72, 153, 0.5) !important;
+}
+
+html[data-theme-preset="performance"] .app-logo-badge {
+  background: linear-gradient(135deg, #ec4899, #8b5cf6) !important;
+  box-shadow: 0 4px 18px rgba(236, 72, 153, 0.45) !important;
 }
 
 /* Mode Clair - Thème Performance */
@@ -807,5 +829,222 @@ html.light #dash-customize-toolbar [class*="bg-zinc-800"] {
   background-color: #e2e8f0 !important;
   color: #0f172a !important;
   border-color: #cbd5e1 !important;
+}
+
+/* ==========================================================================
+   BADGES & NOTIFICATIONS ADAPTABLES AUX THÈMES (Tous les Thèmes)
+   ========================================================================== */
+
+/* 1. Thème Standard (Indigo / Violet) */
+.notif-badge-solid {
+  background-color: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+/* Badge dans l'onglet de navigation lorsqu'il est ACTIF (contraste maximal fond blanc/texte couleur) */
+.tab-nav-btn.bg-brand-500 #nav-rss-badge,
+.tab-nav-btn.bg-brand-500 .notif-badge-solid {
+  background-color: #ffffff !important;
+  color: #4338ca !important;
+  font-weight: 900 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+}
+
+html[data-theme-preset="code"] .tab-nav-btn.bg-brand-500 #nav-rss-badge,
+html[data-theme-preset="code"] .tab-nav-btn.bg-brand-500 .notif-badge-solid {
+  background-color: #042f1d !important;
+  color: #34d399 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35) !important;
+}
+
+html[data-theme-preset="reading"] .tab-nav-btn.bg-brand-500 #nav-rss-badge,
+html[data-theme-preset="reading"] .tab-nav-btn.bg-brand-500 .notif-badge-solid {
+  background-color: #ffffff !important;
+  color: #b45309 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+}
+
+html[data-theme-preset="performance"] .tab-nav-btn.bg-brand-500 #nav-rss-badge,
+html[data-theme-preset="performance"] .tab-nav-btn.bg-brand-500 .notif-badge-solid {
+  background-color: #ffffff !important;
+  color: #be185d !important;
+  font-weight: 900 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+}
+
+.notif-badge-soft {
+  background-color: rgba(99, 102, 241, 0.15) !important;
+  color: #a5b4fc !important;
+  border: 1px solid rgba(99, 102, 241, 0.3) !important;
+}
+.notif-badge-dot {
+  background-color: #818cf8 !important;
+}
+.notif-box-soft {
+  background-color: rgba(99, 102, 241, 0.1) !important;
+  border: 1px solid rgba(99, 102, 241, 0.25) !important;
+}
+.notif-text-accent {
+  color: #818cf8 !important;
+}
+.notif-card-hover:hover {
+  border-color: rgba(99, 102, 241, 0.4) !important;
+}
+
+/* 2. Thème Code (Émeraude / Vert Matrix) */
+html[data-theme-preset="code"] .notif-badge-solid {
+  background-color: #10b981 !important;
+  color: #042f1d !important;
+  font-weight: 900 !important;
+}
+html[data-theme-preset="code"] .notif-badge-soft {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+html[data-theme-preset="code"] .notif-badge-dot {
+  background-color: #10b981 !important;
+}
+html[data-theme-preset="code"] .notif-box-soft {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+html[data-theme-preset="code"] .notif-text-accent {
+  color: #34d399 !important;
+}
+html[data-theme-preset="code"] .notif-card-hover:hover {
+  border-color: rgba(16, 185, 129, 0.5) !important;
+}
+html[data-theme-preset="code"] [class*="bg-brand-500/20"],
+html[data-theme-preset="code"] [class*="bg-brand-500/15"],
+html[data-theme-preset="code"] [class*="bg-brand-500/10"] {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+html[data-theme-preset="code"] [class*="border-brand-500/30"],
+html[data-theme-preset="code"] [class*="border-brand-500/20"] {
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+html[data-theme-preset="code"] [class*="text-brand-300"],
+html[data-theme-preset="code"] [class*="text-brand-400"] {
+  color: #34d399 !important;
+}
+html[data-theme-preset="code"] .bg-brand-400 {
+  background-color: #34d399 !important;
+}
+
+/* 3. Thème Lecture (Ambre / Doré chaleureux) */
+html[data-theme-preset="reading"] .notif-badge-solid {
+  background-color: #d97706 !important;
+  color: #ffffff !important;
+}
+html[data-theme-preset="reading"] .notif-badge-soft {
+  background-color: rgba(217, 119, 6, 0.15) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(217, 119, 6, 0.35) !important;
+}
+html[data-theme-preset="reading"] .notif-badge-dot {
+  background-color: #f59e0b !important;
+}
+html[data-theme-preset="reading"] .notif-box-soft {
+  background-color: rgba(217, 119, 6, 0.1) !important;
+  border-color: rgba(217, 119, 6, 0.3) !important;
+}
+html[data-theme-preset="reading"] .notif-text-accent {
+  color: #fbbf24 !important;
+}
+html[data-theme-preset="reading"] .notif-card-hover:hover {
+  border-color: rgba(217, 119, 6, 0.5) !important;
+}
+html[data-theme-preset="reading"] [class*="bg-brand-500/20"],
+html[data-theme-preset="reading"] [class*="bg-brand-500/15"],
+html[data-theme-preset="reading"] [class*="bg-brand-500/10"] {
+  background-color: rgba(217, 119, 6, 0.15) !important;
+}
+html[data-theme-preset="reading"] [class*="border-brand-500/30"],
+html[data-theme-preset="reading"] [class*="border-brand-500/20"] {
+  border-color: rgba(217, 119, 6, 0.3) !important;
+}
+html[data-theme-preset="reading"] [class*="text-brand-300"],
+html[data-theme-preset="reading"] [class*="text-brand-400"] {
+  color: #fbbf24 !important;
+}
+html[data-theme-preset="reading"] .bg-brand-400 {
+  background-color: #f59e0b !important;
+}
+
+/* 4. Thème Performance (Rose Néon / Fuchsia Cyber) */
+html[data-theme-preset="performance"] .notif-badge-solid {
+  background-color: #ec4899 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.5) !important;
+}
+html[data-theme-preset="performance"] .notif-badge-soft {
+  background-color: rgba(236, 72, 153, 0.18) !important;
+  color: #f472b6 !important;
+  border-color: rgba(236, 72, 153, 0.35) !important;
+}
+html[data-theme-preset="performance"] .notif-badge-dot {
+  background-color: #ec4899 !important;
+  box-shadow: 0 0 6px rgba(236, 72, 153, 0.8) !important;
+}
+html[data-theme-preset="performance"] .notif-box-soft {
+  background-color: rgba(236, 72, 153, 0.1) !important;
+  border-color: rgba(236, 72, 153, 0.3) !important;
+}
+html[data-theme-preset="performance"] .notif-text-accent {
+  color: #f472b6 !important;
+}
+html[data-theme-preset="performance"] .notif-card-hover:hover {
+  border-color: rgba(236, 72, 153, 0.5) !important;
+}
+html[data-theme-preset="performance"] [class*="bg-brand-500/20"],
+html[data-theme-preset="performance"] [class*="bg-brand-500/15"],
+html[data-theme-preset="performance"] [class*="bg-brand-500/10"] {
+  background-color: rgba(236, 72, 153, 0.18) !important;
+}
+html[data-theme-preset="performance"] [class*="border-brand-500/30"],
+html[data-theme-preset="performance"] [class*="border-brand-500/20"] {
+  border-color: rgba(236, 72, 153, 0.35) !important;
+}
+html[data-theme-preset="performance"] [class*="text-brand-300"],
+html[data-theme-preset="performance"] [class*="text-brand-400"] {
+  color: #f472b6 !important;
+}
+html[data-theme-preset="performance"] .bg-brand-400 {
+  background-color: #ec4899 !important;
+}
+
+/* ==========================================================================
+   ADAPTATION DES SUJETS DE VEILLE AUX THÈMES (Tous les Thèmes)
+   ========================================================================== */
+
+html[data-theme-preset="code"] #view-rss [class*="purple-"],
+html[data-theme-preset="code"] #full-articles-list [class*="purple-"] {
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+
+html[data-theme-preset="reading"] #view-rss [class*="purple-"],
+html[data-theme-preset="reading"] #full-articles-list [class*="purple-"] {
+  color: #fbbf24 !important;
+  border-color: rgba(217, 119, 6, 0.35) !important;
+  background-color: rgba(217, 119, 6, 0.15) !important;
+}
+
+html[data-theme-preset="performance"] #view-rss [class*="purple-"],
+html[data-theme-preset="performance"] #full-articles-list [class*="purple-"] {
+  color: #f472b6 !important;
+  border-color: rgba(236, 72, 153, 0.35) !important;
+  background-color: rgba(236, 72, 153, 0.18) !important;
+}
+
+html[data-theme-preset="standard"] #view-rss [class*="purple-"],
+html[data-theme-preset="standard"] #full-articles-list [class*="purple-"] {
+  color: #a5b4fc !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+  background-color: rgba(99, 102, 241, 0.15) !important;
 }
 

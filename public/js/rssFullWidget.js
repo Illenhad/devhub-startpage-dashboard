@@ -584,7 +584,7 @@ class RssFullWidget {
 
     if (this.allBadgeEl) {
       if (globalUnread > 0) {
-        this.allBadgeEl.className = 'px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black font-mono shadow-sm';
+        this.allBadgeEl.className = 'px-2 py-0.5 rounded-full notif-badge-solid text-[10px] font-black font-mono shadow-sm';
         this.allBadgeEl.textContent = globalUnread > 99 ? '99+' : globalUnread;
       } else {
         this.allBadgeEl.className = 'px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-[10px] font-bold font-mono';
@@ -610,13 +610,13 @@ class RssFullWidget {
               onclick="window.rssFullWidget.selectKeyword('${kw.keyword}')"
               class="group flex items-center justify-between p-2 rounded-xl cursor-pointer transition-all ${
                 isActive
-                  ? 'bg-purple-500/20 border border-purple-500/40 text-purple-200 font-bold shadow-sm'
+                  ? 'notif-box-soft font-bold shadow-sm'
                   : 'hover:bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 border border-transparent'
               }"
             >
               <div class="flex items-center gap-2 min-w-0 pr-1">
                 <span class="text-xs shrink-0">${kw.icon || '🎯'}</span>
-                <span class="text-xs font-semibold truncate ${isActive ? 'text-purple-300' : 'text-zinc-200'}">
+                <span class="text-xs font-semibold truncate ${isActive ? 'notif-text-accent' : 'text-zinc-200'}">
                   ${kw.keyword}
                 </span>
               </div>
@@ -624,7 +624,7 @@ class RssFullWidget {
               <div class="flex items-center gap-1.5 shrink-0">
                 <!-- Badge d'articles non lus pour ce mot-clé -->
                 ${unreadCount > 0 ? `
-                  <span class="px-1.5 py-0.5 rounded-full bg-purple-500/25 text-purple-300 border border-purple-500/30 text-[9px] font-bold font-mono">
+                  <span class="px-1.5 py-0.5 rounded-full notif-badge-soft text-[9px] font-bold font-mono">
                     ${unreadCount}
                   </span>
                 ` : `
@@ -682,7 +682,7 @@ class RssFullWidget {
               <div class="flex items-center gap-1.5 shrink-0">
                 <!-- Badge d'articles non lus pour ce flux -->
                 ${unreadCount > 0 ? `
-                  <span class="px-1.5 py-0.5 rounded-full bg-amber-500/25 text-amber-300 border border-amber-500/30 text-[9px] font-bold font-mono">
+                  <span class="px-1.5 py-0.5 rounded-full notif-badge-soft text-[9px] font-bold font-mono">
                     ${unreadCount}
                   </span>
                 ` : `
@@ -790,7 +790,7 @@ class RssFullWidget {
               <div class="flex items-center gap-1.5 min-w-0">
                 <!-- Badge Tag de la source ou du mot-clé -->
                 ${isWatch ? `
-                  <span class="px-2 py-0.5 rounded-lg bg-purple-500/15 text-purple-300 font-bold border border-purple-500/20 font-mono text-[10px] truncate max-w-[150px]">
+                  <span class="px-2 py-0.5 rounded-lg notif-badge-soft font-bold border font-mono text-[10px] truncate max-w-[150px]">
                     🎯 Veille : ${a.watchKeyword || 'Sujet'}
                   </span>
                 ` : `
@@ -806,8 +806,8 @@ class RssFullWidget {
                     <span>Lu</span>
                   </span>
                 ` : `
-                  <span class="px-1.5 py-0.5 rounded-lg bg-brand-500/20 text-brand-300 border border-brand-500/30 text-[9px] font-bold font-mono flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse"></span>
+                  <span class="px-1.5 py-0.5 rounded-lg notif-badge-soft text-[9px] font-bold font-mono flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full notif-badge-dot animate-pulse"></span>
                     <span>Nouveau</span>
                   </span>
                 `}

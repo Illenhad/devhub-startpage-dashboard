@@ -122,7 +122,7 @@ class RssWidget {
     // 1. Badge dans l'en-tête de carte du Dashboard
     if (this.badgeEl) {
       if (unreadCount > 0) {
-        this.badgeEl.className = 'text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30';
+        this.badgeEl.className = 'text-[9px] font-mono px-1.5 py-0.5 rounded-full notif-badge-soft font-bold';
         this.badgeEl.textContent = `${unreadCount} non lu${unreadCount > 1 ? 's' : ''}`;
       } else {
         this.badgeEl.className = 'text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 font-semibold';
@@ -133,10 +133,10 @@ class RssWidget {
     // 2. Badge dans l'onglet de navigation haut
     if (this.navBadgeEl) {
       if (unreadCount > 0) {
-        this.navBadgeEl.classList.remove('hidden');
+        this.navBadgeEl.className = 'px-1.5 py-0.5 rounded-full notif-badge-solid text-[9px] font-extrabold font-mono shadow-sm';
         this.navBadgeEl.textContent = unreadCount > 99 ? '99+' : unreadCount;
       } else {
-        this.navBadgeEl.classList.add('hidden');
+        this.navBadgeEl.className = 'hidden';
       }
     }
 
@@ -157,10 +157,10 @@ class RssWidget {
         <div class="space-y-3 flex-1 flex flex-col justify-between">
           <!-- Compteurs -->
           <div class="grid grid-cols-2 gap-2 text-center">
-            <div class="p-2.5 rounded-2xl ${unreadCount > 0 ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-zinc-900/70 border border-zinc-800'} flex flex-col justify-between">
-              <span class="text-[9px] ${unreadCount > 0 ? 'text-amber-400 font-semibold' : 'text-zinc-400 font-medium'} uppercase">Non lus</span>
-              <span class="font-mono text-xl font-black ${unreadCount > 0 ? 'text-amber-300' : 'text-zinc-300'} my-0.5">${unreadCount}</span>
-              <span class="text-[9px] ${unreadCount > 0 ? 'text-amber-400/80 font-medium' : 'text-zinc-500'}">sur ${totalCount} articles</span>
+            <div class="p-2.5 rounded-2xl ${unreadCount > 0 ? 'notif-box-soft' : 'bg-zinc-900/70 border border-zinc-800'} flex flex-col justify-between">
+              <span class="text-[9px] ${unreadCount > 0 ? 'notif-text-accent font-semibold' : 'text-zinc-400 font-medium'} uppercase">Non lus</span>
+              <span class="font-mono text-xl font-black ${unreadCount > 0 ? 'notif-text-accent' : 'text-zinc-300'} my-0.5">${unreadCount}</span>
+              <span class="text-[9px] ${unreadCount > 0 ? 'notif-text-accent opacity-80 font-medium' : 'text-zinc-500'}">sur ${totalCount} articles</span>
             </div>
 
             <div class="p-2.5 rounded-2xl bg-zinc-900/70 border border-zinc-800 flex flex-col justify-between">
@@ -174,7 +174,7 @@ class RssWidget {
           ${latestItem ? `
             <div 
               onclick="document.querySelector('[data-tab-target=\\'rss\\']')?.click()"
-              class="p-2 rounded-xl bg-zinc-900/40 hover:bg-zinc-900 border border-zinc-800/60 hover:border-amber-500/40 transition-all cursor-pointer group flex items-center justify-between gap-2"
+              class="p-2 rounded-xl bg-zinc-900/40 hover:bg-zinc-900 border border-zinc-800/60 notif-card-hover transition-all cursor-pointer group flex items-center justify-between gap-2"
               title="${latestItem.title}"
             >
               <div class="flex items-center gap-1.5 min-w-0">

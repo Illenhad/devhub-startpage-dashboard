@@ -151,6 +151,19 @@ class ThemeManager {
         btn.className = 'theme-preset-btn px-2 py-1 rounded-xl flex items-center gap-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-all font-medium text-xs cursor-pointer';
       }
     });
+
+    // 5. Mettre à jour la Favicon du navigateur selon le Preset actif
+    const themeColors = {
+      standard: '#6366f1',
+      code: '#10b981',
+      reading: '#d97706',
+      performance: '#ec4899'
+    };
+    const activeColor = themeColors[this.currentPreset] || '#6366f1';
+    const favicon = document.querySelector("link[rel='icon']");
+    if (favicon) {
+      favicon.href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${encodeURIComponent(activeColor)}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2'/><path d='M9 3v18'/><path d='m14 9 3 3-3 3'/></svg>`;
+    }
   }
 }
 
