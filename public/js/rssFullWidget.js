@@ -1035,8 +1035,44 @@ class RssFullWidget {
     }
 
     if (this.readerModalBodyEl) {
-      let contentHtml = article.content || `<p class="leading-relaxed text-zinc-300">${article.excerpt}</p>`;
-      this.readerModalBodyEl.innerHTML = contentHtml;
+      let contentHtml = article.content || `<p class="leading-relaxed text-zinc-300 text-sm">${article.excerpt || ''}</p>`;
+      
+      // Image d'en-tête si présente et non déjà incluse dans le corps
+      let coverImageHtml = '';
+      if (article.image && !contentHtml.includes(article.image)) {
+        coverImageHtml = `
+          <div class="mb-5 rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950/60 shadow-lg">
+            <img src="${article.image}" alt="${article.title || ''}" class="w-full max-h-80 object-cover" loading="lazy" referrerpolicy="no-referrer" />
+          </div>
+        `;
+      }
+
+      // Si le contenu est court (moins de 250 caractères, typique des flux limités aux résumés comme Le Monde)
+      const textOnly = contentHtml.replace(/<[^>]+>/g, '').trim();
+      let sourceCalloutHtml = '';
+      if (textOnly.length < 250) {
+        sourceCalloutHtml = `
+          <div class="mt-6 p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div class="space-y-0.5">
+              <span class="font-bold text-zinc-200 flex items-center gap-1.5">
+                <span>🔒</span> <span>Article complet sur ${article.feedName || 'le site source'}</span>
+              </span>
+              <p class="text-[11px] text-zinc-400">Ce média ne diffuse qu'un extrait dans son flux RSS. L'article complet est à retrouver sur leur site.</p>
+            </div>
+            <a
+              href="${article.link}"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-95 text-white font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 shadow-md shadow-brand-500/20"
+            >
+              <span>Lire la suite</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            </a>
+          </div>
+        `;
+      }
+
+      this.readerModalBodyEl.innerHTML = coverImageHtml + contentHtml + sourceCalloutHtml;
       this.readerModalBodyEl.scrollTop = 0;
     }
 

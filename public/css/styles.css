@@ -689,3 +689,123 @@ html.light[data-theme-preset="performance"] [id$="-bar"] {
   background: linear-gradient(90deg, #0284c7, #db2777) !important;
 }
 
+/* ------------------------------------------------------------- */
+/* PERSONNALISATION ACCUEIL : DRAG & DROP ET TAILLES DE GRILLE    */
+/* ------------------------------------------------------------- */
+.widget-drag-handle {
+  touch-action: none;
+  cursor: grab;
+}
+
+.widget-drag-handle:active {
+  cursor: grabbing;
+}
+
+[data-widget-id] {
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+[data-widget-id].widget-dragging {
+  opacity: 0.35 !important;
+  transform: scale(0.98);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4) !important;
+}
+
+.widget-drop-placeholder {
+  transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
+}
+
+#dashboard-widgets-grid {
+  grid-auto-rows: minmax(215px, auto);
+  grid-auto-flow: dense;
+}
+
+#dashboard-widgets-grid > [data-widget-id] {
+  height: 100%;
+}
+
+.row-span-1 {
+  grid-row: span 1 / span 1;
+}
+
+.row-span-2 {
+  grid-row: span 2 / span 2;
+}
+
+.row-span-3 {
+  grid-row: span 3 / span 3;
+}
+
+.row-span-4 {
+  grid-row: span 4 / span 4;
+}
+
+#dashboard-widgets-grid.is-customizing [data-widget-id] {
+  outline: 1px dashed rgba(99, 102, 241, 0.35);
+  outline-offset: 3px;
+}
+
+#dashboard-widgets-grid.is-customizing [data-widget-id]:hover {
+  outline-color: rgba(99, 102, 241, 0.7);
+  box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.15);
+}
+
+/* Poignée de coin pour redimensionnement (visible uniquement en mode personnalisation) */
+.widget-resize-handle {
+  display: none;
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  background-color: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  color: #a5b4fc;
+  align-items: center;
+  justify-content: center;
+  cursor: se-resize;
+  touch-action: none;
+  user-select: none;
+  z-index: 30;
+  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.widget-resize-handle:hover {
+  background-color: rgba(99, 102, 241, 0.5);
+  border-color: #6366f1;
+  color: #ffffff;
+  transform: scale(1.15);
+}
+
+.widget-resize-handle:active {
+  transform: scale(0.95);
+  background-color: #6366f1;
+}
+
+#dashboard-widgets-grid.is-customizing .widget-resize-handle {
+  display: flex;
+}
+
+html.light #dash-customize-toolbar {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light #dash-customize-toolbar [class*="bg-zinc-950"] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light #dash-customize-toolbar [class*="bg-zinc-900"] {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light #dash-customize-toolbar [class*="bg-zinc-800"] {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+

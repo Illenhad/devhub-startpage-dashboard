@@ -258,7 +258,7 @@ export function parseRSSXml(xml, fallbackUrl = '', maxAgeDays = MAX_ARTICLE_AGE_
     // Image / Thumbnail
     let image = '';
     const mediaThumbMatch = block.match(/<media:thumbnail[^>]+url="([^"]+)"/i) ||
-                            block.match(/<media:content[^>]+url="([^"]+)"[^>]*medium="image"/i) ||
+                            block.match(/<media:content[^>]+url="([^"]+)"/i) ||
                             block.match(/<enclosure[^>]+url="([^"]+)"[^>]*type="image/i) ||
                             resolvedContent.match(/<img[^>]+src="([^">]+\.(?:jpg|jpeg|png|webp|gif|svg|avif)(?:\?[^">]*)?)"/i) ||
                             resolvedContent.match(/<img[^>]+src="([^">]+)"/i);

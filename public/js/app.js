@@ -22,6 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
   window.rssWidget = new window.RssWidget();
   window.rssFullWidget = new window.RssFullWidget();
 
+  // Gestionnaire d'Agencement de l'Accueil (Drag & Drop, Grille & Visibilité)
+  if (window.DashboardLayoutManager) {
+    window.dashboardLayoutManager = new window.DashboardLayoutManager();
+  }
+
   // Gestion des Onglets Pleine Page
   initTabs();
 
