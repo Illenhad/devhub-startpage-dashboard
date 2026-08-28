@@ -1094,41 +1094,51 @@ class RssFullWidget {
           </div>
         `;
 
-        autoLoadIndicatorHtml = `
-          <div id="reader-autoload-indicator" class="mt-4 p-3.5 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 flex items-center justify-between gap-3 text-xs animate-pulse">
-            <div class="flex items-center gap-2.5 text-zinc-300 font-semibold">
-              <span class="w-2 h-2 rounded-full notif-badge-dot animate-ping"></span>
-              <span>Chargement automatique de l'article complet...</span>
-            </div>
-            <span class="text-[10px] text-zinc-500 font-mono">Mode Lecteur</span>
-          </div>
-        `;
+        // Ne déclencher le chargement automatique qu'une seule fois par article (évite toute boucle infinie)
+        if (!article._fullContentAttempted) {
+          article._fullContentAttempted = true;
 
-        // Déclenchement automatique et fluide de la récupération du texte intégral
-        const currentIdx = currentIndex;
-        fetch(`/api/rss/full-content?url=${encodeURIComponent(article.link)}`)
-          .then(r => r.json())
-          .then(data => {
-            if (data.success && data.content && data.content.length > 80) {
-              article.content = data.content;
-              if (!article.image && data.image) {
-                article.image = data.image;
+          autoLoadIndicatorHtml = `
+            <div id="reader-autoload-indicator" class="mt-4 p-3.5 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 flex items-center justify-between gap-3 text-xs animate-pulse">
+              <div class="flex items-center gap-2.5 text-zinc-300 font-semibold">
+                <span class="w-2 h-2 rounded-full notif-badge-dot animate-ping"></span>
+                <span>Chargement automatique de l'article complet...</span>
+              </div>
+              <span class="text-[10px] text-zinc-500 font-mono">Mode Lecteur</span>
+            </div>
+          `;
+
+          const currentIdx = currentIndex;
+          fetch(`/api/rss/full-content?url=${encodeURIComponent(article.link)}`)
+            .then(r => r.json())
+            .then(data => {
+              if (data.success && data.content && data.content.length > 80) {
+                article.content = data.content;
+                if (!article.image && data.image) {
+                  article.image = data.image;
+                }
+                // Si l'utilisateur est toujours sur cet article, injecter directement le corps complet sans récursion
+                if (this.currentArticleIndex === currentIdx && this.readerModalBodyEl) {
+                  const loader = document.getElementById('reader-autoload-indicator');
+                  if (loader) {
+                    loader.outerHTML = data.content;
+                  } else {
+                    this.readerModalBodyEl.innerHTML = coverImageHtml + data.content;
+                  }
+                }
+              } else {
+                const loader = document.getElementById('reader-autoload-indicator');
+                if (loader) loader.outerHTML = sourceCalloutHtml;
               }
-              if (this.currentArticleIndex === currentIdx) {
-                this.renderArticleModalContent(article, currentIdx, totalCount);
-              }
-            } else {
+            })
+            .catch(() => {
               const loader = document.getElementById('reader-autoload-indicator');
               if (loader) loader.outerHTML = sourceCalloutHtml;
-            }
-          })
-          .catch(() => {
-            const loader = document.getElementById('reader-autoload-indicator');
-            if (loader) loader.outerHTML = sourceCalloutHtml;
-          });
+            });
+        }
       }
 
-      this.readerModalBodyEl.innerHTML = coverImageHtml + contentHtml + (autoLoadIndicatorHtml || sourceCalloutHtml);
+      this.readerModalBodyEl.innerHTML = coverImageHtml + contentHtml + (autoLoadIndicatorHtml || (article._fullContentAttempted ? sourceCalloutHtml : ''));
       this.readerModalBodyEl.scrollTop = 0;
     }
 

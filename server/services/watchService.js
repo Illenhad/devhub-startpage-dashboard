@@ -28,13 +28,49 @@ export function extractCleanArticleContent(html, baseUrl = '') {
     .replace(/<form\b[\s\S]*?<\/form>/gi, '')
     .replace(/<dialog\b[\s\S]*?<\/dialog>/gi, '');
 
-  // 2. Recherche du conteneur d'article principal
-  const candidateMatch = 
-    clean.match(/<article[^>]*>([\s\S]*?)<\/article>/i) ||
-    clean.match(/<div[^>]+class=["'][^"']*(?:article[-_]content|entry[-_]content|post[-_]content|story[-_]body|article__body|content[-_]article|single[-_]content|article[-_]text)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i) ||
-    clean.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
+  // 2. Recherche robuste du conteneur d'article principal (gestion propre des balises imbriquées)
+  const patterns = [
+    /<div[^>]+class=["'][^"']*\b(?:entry[-_]content|article[-_]content|post[-_]content|story[-_]body|article__body|content[-_]article|single[-_]content|article[-_]text)\b[^"']*["'][^>]*>/i,
+    /<article[^>]+class=["'][^"']*\b(?:single|post|entry)\b[^"']*["'][^>]*>/i,
+    /<main[^>]*>/i,
+    /<article[^>]*>/i
+  ];
 
-  const containerHtml = candidateMatch ? candidateMatch[1] : clean;
+  let containerHtml = clean;
+  let startIdx = -1;
+  let matchLength = 0;
+  for (const pattern of patterns) {
+    const m = clean.match(pattern);
+    if (m && m.index !== undefined) {
+      startIdx = m.index;
+      matchLength = m[0].length;
+      break;
+    }
+  }
+
+  if (startIdx !== -1) {
+    const isArticleTag = clean.slice(startIdx, startIdx + 4).toLowerCase().startsWith('<art');
+    const openTag = isArticleTag ? 'article' : (clean.slice(startIdx, startIdx + 5).toLowerCase().startsWith('<main') ? 'main' : 'div');
+    let depth = 0;
+    const tagRegex = new RegExp(`<\/?${openTag}\\b[^>]*>`, 'gi');
+    tagRegex.lastIndex = startIdx;
+
+    let endIdx = clean.length;
+    let tagMatch;
+    while ((tagMatch = tagRegex.exec(clean)) !== null) {
+      const tag = tagMatch[0];
+      if (tag.startsWith('</')) {
+        depth--;
+        if (depth === 0) {
+          endIdx = tagMatch.index;
+          break;
+        }
+      } else if (!tag.endsWith('/>')) {
+        depth++;
+      }
+    }
+    containerHtml = clean.slice(startIdx + matchLength, endIdx);
+  }
 
   // 3. Extraction ordonnée des éléments éditoriaux
   const elementRegex = /<(p|h2|h3|h4|blockquote|ul|ol)[^>]*>([\s\S]*?)<\/\1>/gi;
@@ -48,7 +84,7 @@ export function extractCleanArticleContent(html, baseUrl = '') {
     // Filtre des paragraphes trop courts ou bannières promotionnelles
     const textOnly = inner.replace(/<[^>]+>/g, '').trim();
     if (textOnly.length < 25 && tag === 'p') continue;
-    if (/cookie|partager sur|abonnez-vous|newsletter|lire aussi|publicit|suivez-nous/i.test(textOnly) && textOnly.length < 90) continue;
+    if (/cookie|partager sur|abonnez-vous|newsletter|lire aussi|publicit|suivez-nous|ajoutez-nous/i.test(textOnly) && textOnly.length < 90) continue;
 
     // Conserver les balises utiles
     inner = inner.replace(/<(?!\/?(strong|b|em|i|a|code|span)\b)[^>]+>/gi, '');
