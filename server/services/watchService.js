@@ -323,6 +323,7 @@ export async function getUnifiedNewsFeed() {
           type: 'rss',
           feedId: feed.id,
           feedName: feed.name,
+          feedUrl: feed.url,
           feedIcon: feed.icon || '📰',
           feedCategory: feed.category || 'Flux RSS'
         })))

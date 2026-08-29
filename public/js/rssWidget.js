@@ -1,5 +1,5 @@
 /**
- * Widget Synthèse Veille & Flux RSS pour la page d'accueil (Synchronisé SQLite)
+ * Widget Synthèse Veille & Flux RSS pour la page d'accueil (Synchronisé avec RssStore)
  */
 
 class RssWidget {
@@ -10,6 +10,12 @@ class RssWidget {
     this.refreshBtn = document.getElementById('dash-rss-refresh-btn');
 
     this.bindEvents();
+
+    // S'abonner aux changements du store central pour un rafraîchissement 100% réactif
+    if (window.rssStore) {
+      window.rssStore.subscribe(() => this.updateUI());
+    }
+
     this.loadUnreadCount();
   }
 
@@ -18,28 +24,14 @@ class RssWidget {
       this.refreshBtn.addEventListener('click', () => this.loadUnreadCount(true));
     }
 
-    // Écoute des mises à jour émises par le lecteur complet ou d'autres onglets
-    window.addEventListener('rss-state-changed', () => {
-      this.loadUnreadCount(false);
-    });
-
-    // Mise à jour lors du focus sur la fenêtre
+    // Mise à jour lors du focus sur la fenêtre si le store a plus de 5 minutes
     window.addEventListener('focus', () => {
-      this.loadUnreadCount(false);
+      if (window.rssStore && (Date.now() - window.rssStore.lastFetched > 300_000)) {
+        this.loadUnreadCount(false);
+      } else {
+        this.updateUI();
+      }
     });
-  }
-
-  getArticleTimestamp(a) {
-    if (!a) return 0;
-    if (a.timestamp && typeof a.timestamp === 'number' && !isNaN(a.timestamp) && a.timestamp > 0) {
-      return a.timestamp;
-    }
-    if (a.rawDate) {
-      const d = new Date(a.rawDate);
-      const t = d.getTime();
-      if (!isNaN(t) && t > 0) return t;
-    }
-    return 0;
   }
 
   async loadUnreadCount(isManual = false) {
@@ -49,73 +41,39 @@ class RssWidget {
       setTimeout(() => icon.classList.remove('animate-spin'), 600);
     }
 
-    // 1. Récupérer l'état des articles lus et supprimés
-    let readSet = new Set();
-    let deletedSet = new Set();
+    // Rendu immédiat à partir du cache local
+    this.updateUI();
 
-    try {
-      const rawRead = localStorage.getItem('devhub_rss_read_articles') || localStorage.getItem('mac_rss_read_articles');
-      if (rawRead) readSet = new Set(JSON.parse(rawRead));
-      const rawDel = localStorage.getItem('devhub_rss_deleted_articles') || localStorage.getItem('mac_rss_deleted_articles');
-      if (rawDel) deletedSet = new Set(JSON.parse(rawDel));
-    } catch {}
-
-    try {
-      const stateRes = await fetch('/api/rss/state');
-      if (stateRes.ok) {
-        const stateData = await stateRes.json();
-        if (stateData.readArticles) {
-          readSet = new Set(stateData.readArticles);
-          localStorage.setItem('devhub_rss_read_articles', JSON.stringify(stateData.readArticles));
-        }
-        if (stateData.deletedArticles) {
-          deletedSet = new Set(stateData.deletedArticles);
-          localStorage.setItem('devhub_rss_deleted_articles', JSON.stringify(stateData.deletedArticles));
-        }
+    if (window.rssStore) {
+      try {
+        await window.rssStore.fetchUnified(isManual);
+      } catch (err) {
+        console.warn('Erreur chargement RssStore depuis RssWidget:', err);
       }
-    } catch {}
-
-    // Optimisation : si RssFullWidget a déjà chargé les articles unifiés en mémoire
-    if (window.rssFullWidget && window.rssFullWidget.activeMode === 'unified' && window.rssFullWidget.articles.length > 0) {
-      const items = window.rssFullWidget.articles;
-      const activeItems = items.filter(a => !deletedSet.has(a.link)).sort((a, b) => this.getArticleTimestamp(b) - this.getArticleTimestamp(a));
-      const unreadItems = activeItems.filter(a => !readSet.has(a.link));
-      const unreadCount = unreadItems.length;
-      const latestItem = unreadItems[0] || activeItems[0] || null;
-
-      this.render({
-        unreadCount,
-        totalCount: activeItems.length,
-        feedCount: window.rssFullWidget.feeds?.length || 3,
-        kwCount: window.rssFullWidget.watchKeywords?.length || 4,
-        latestItem
-      });
-      return;
     }
 
-    try {
-      // Interroger le flux unifié
-      const res = await fetch('/api/watch/unified');
-      if (!res.ok) throw new Error('Erreur chargement veille');
-      const data = await res.json();
-      const items = data.items || [];
+    this.updateUI();
+  }
 
-      const activeItems = items.filter(a => !deletedSet.has(a.link)).sort((a, b) => this.getArticleTimestamp(b) - this.getArticleTimestamp(a));
-      const unreadItems = activeItems.filter(a => !readSet.has(a.link));
-      const unreadCount = unreadItems.length;
-      const latestItem = unreadItems[0] || activeItems[0] || null;
+  updateUI() {
+    if (!window.rssStore) return;
 
-      this.render({
-        unreadCount,
-        totalCount: activeItems.length,
-        feedCount: data.totalFeeds || 3,
-        kwCount: data.totalKeywords || 4,
-        latestItem
-      });
-    } catch (err) {
-      console.error('Erreur synthèse Veille & RSS:', err);
-      this.renderOffline();
-    }
+    const unreadCount = window.rssStore.getGlobalUnreadCount();
+    const totalCount = window.rssStore.getGlobalTotalCount();
+    const activeArticles = window.rssStore.getActiveMasterArticles();
+    const unreadArticles = window.rssStore.getGlobalUnreadArticles();
+    const latestItem = unreadArticles[0] || activeArticles[0] || null;
+
+    const feedCount = window.rssStore.feeds?.length || 3;
+    const kwCount = window.rssStore.watchKeywords?.length || 4;
+
+    this.render({
+      unreadCount,
+      totalCount,
+      feedCount,
+      kwCount,
+      latestItem
+    });
   }
 
   render({ unreadCount, totalCount, feedCount, kwCount, latestItem }) {
@@ -130,7 +88,7 @@ class RssWidget {
       }
     }
 
-    // 2. Badge dans l'onglet de navigation haut
+    // 2. Badge dans l'onglet de navigation haut ("Veille Tech")
     if (this.navBadgeEl) {
       if (unreadCount > 0) {
         this.navBadgeEl.className = 'px-1.5 py-0.5 rounded-full notif-badge-solid text-[9px] font-extrabold font-mono shadow-sm';
@@ -151,7 +109,6 @@ class RssWidget {
     // 4. Rendu de la carte du Dashboard
     if (this.contentEl) {
       const isWatch = latestItem?.type === 'watch' || latestItem?.watchKeyword;
-      const itemTag = isWatch ? `🎯 ${latestItem.watchKeyword}` : (latestItem?.feedName || '⚡ Actualité');
 
       this.contentEl.innerHTML = `
         <div class="space-y-3 flex-1 flex flex-col justify-between">
@@ -175,15 +132,15 @@ class RssWidget {
             <div 
               onclick="document.querySelector('[data-tab-target=\\'rss\\']')?.click()"
               class="p-2 rounded-xl bg-zinc-900/40 hover:bg-zinc-900 border border-zinc-800/60 notif-card-hover transition-all cursor-pointer group flex items-center justify-between gap-2"
-              title="${latestItem.title}"
+              title="${latestItem.title || ''}"
             >
               <div class="flex items-center gap-1.5 min-w-0">
                 <span class="text-amber-400 text-xs shrink-0">${isWatch ? '🎯' : '⚡'}</span>
                 <span class="text-[11px] font-medium text-zinc-300 group-hover:text-amber-300 truncate">
-                  ${latestItem.title}
+                  ${latestItem.title || ''}
                 </span>
               </div>
-              <span class="text-[9px] text-zinc-500 shrink-0 font-mono">${latestItem.date}</span>
+              <span class="text-[9px] text-zinc-500 shrink-0 font-mono">${latestItem.date || ''}</span>
             </div>
           ` : `
             <div class="p-2 rounded-xl bg-zinc-900/40 border border-zinc-800/60 text-center text-[10px] text-zinc-500">

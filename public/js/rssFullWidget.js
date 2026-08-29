@@ -4,21 +4,16 @@
 
 class RssFullWidget {
   constructor() {
-    this.feeds = [];
-    this.watchKeywords = [];
     this.activeMode = 'unified'; // 'unified' | 'feed' | 'keyword'
     this.activeTarget = 'all';   // 'all' | feedUrl | keyword
     this.activeTitle = '🌟 Tous les articles (Flux & Veille)';
     this.activeDesc = 'Flux unifié d\'actualités des 7 derniers jours et surveillance par mots-clés';
 
-    this.masterArticles = []; // Ensemble complet pour calcul des compteurs par source
     this.articles = [];
     this.displayedArticles = [];
     this.currentArticleIndex = 0;
     this.searchQuery = '';
     this.readFilter = 'all'; // 'all' | 'unread' | 'read'
-    this.readArticles = new Set();
-    this.deletedArticles = new Set();
 
     // Éléments DOM Sidebar & Listes
     this.allBtnEl = document.getElementById('full-watch-all-btn');
@@ -55,7 +50,28 @@ class RssFullWidget {
     this.readerModalNextBtn = document.getElementById('rss-reader-modal-next');
 
     this.bindEvents();
-    this.loadState();
+
+    // S'abonner aux changements du store central
+    if (window.rssStore) {
+      window.rssStore.subscribe(() => this.onStoreChanged());
+    }
+
+    this.renderSidebar();
+  }
+
+  // Getters directs vers le store central (Zéro désynchronisation possible)
+  get feeds() { return window.rssStore?.feeds || []; }
+  get watchKeywords() { return window.rssStore?.watchKeywords || []; }
+  get readArticles() { return window.rssStore?.readArticles || new Set(); }
+  get deletedArticles() { return window.rssStore?.deletedArticles || new Set(); }
+  get masterArticles() { return window.rssStore?.masterArticles || []; }
+
+  onStoreChanged() {
+    if (this.activeMode === 'unified' && window.rssStore) {
+      this.articles = window.rssStore.getActiveMasterArticles();
+    }
+    this.renderSidebar();
+    this.renderArticles();
   }
 
   bindEvents() {
@@ -174,69 +190,18 @@ class RssFullWidget {
     });
   }
 
-  async loadState() {
-    // 1. Pré-chargement rapide depuis localStorage si disponible (zéro latence)
-    try {
-      const rawRead = localStorage.getItem('devhub_rss_read_articles') || localStorage.getItem('mac_rss_read_articles');
-      if (rawRead) this.readArticles = new Set(JSON.parse(rawRead));
-      const rawDel = localStorage.getItem('devhub_rss_deleted_articles') || localStorage.getItem('mac_rss_deleted_articles');
-      if (rawDel) this.deletedArticles = new Set(JSON.parse(rawDel));
-      const rawFeeds = localStorage.getItem('devhub_rss_feeds') || localStorage.getItem('mac_rss_feeds');
-      if (rawFeeds) this.feeds = JSON.parse(rawFeeds);
-      const rawKw = localStorage.getItem('devhub_watch_keywords') || localStorage.getItem('mac_watch_keywords');
-      if (rawKw) this.watchKeywords = JSON.parse(rawKw);
-    } catch {}
-
-    // 2. Synchronisation SQLite
-    try {
-      const [feedsRes, kwRes, stateRes] = await Promise.all([
-        fetch('/api/rss/feeds'),
-        fetch('/api/watch/keywords'),
-        fetch('/api/rss/state')
-      ]);
-
-      if (feedsRes.ok) {
-        const feedsData = await feedsRes.json();
-        if (feedsData.feeds) {
-          this.feeds = feedsData.feeds;
-          localStorage.setItem('devhub_rss_feeds', JSON.stringify(this.feeds));
-        }
-      }
-
-      if (kwRes.ok) {
-        const kwData = await kwRes.json();
-        if (kwData.keywords) {
-          this.watchKeywords = kwData.keywords;
-          localStorage.setItem('devhub_watch_keywords', JSON.stringify(this.watchKeywords));
-        }
-      }
-
-      if (stateRes.ok) {
-        const stateData = await stateRes.json();
-        if (stateData.readArticles) {
-          this.readArticles = new Set(stateData.readArticles);
-          localStorage.setItem('devhub_rss_read_articles', JSON.stringify(stateData.readArticles));
-        }
-        if (stateData.deletedArticles) {
-          this.deletedArticles = new Set(stateData.deletedArticles);
-          localStorage.setItem('devhub_rss_deleted_articles', JSON.stringify(stateData.deletedArticles));
-        }
-      }
-    } catch (err) {
-      console.warn('Sync SQLite Veille & RSS:', err);
-    }
-
+  async initView() {
     this.renderSidebar();
+    if (this.articles.length === 0) {
+      await this.selectUnified();
+    } else {
+      this.renderArticles();
+    }
   }
 
   notifyStateChanged() {
-    window.dispatchEvent(new CustomEvent('rss-state-changed'));
-  }
-
-  async initView() {
-    await this.loadState();
-    if (this.articles.length === 0) {
-      await this.selectUnified();
+    if (window.rssStore) {
+      window.rssStore.notify();
     }
   }
 
@@ -268,29 +233,11 @@ class RssFullWidget {
   }
 
   getUnreadCountForKeyword(keyword) {
-    if (!this.masterArticles || this.masterArticles.length === 0) return 0;
-    const clean = (keyword || '').toLowerCase().trim();
-    const items = this.masterArticles.filter(a => {
-      const kw = (a.watchKeyword || '').toLowerCase().trim();
-      return kw === clean || (a.type === 'watch' && kw.includes(clean));
-    });
-    return items.filter(a => !this.deletedArticles.has(a.link) && !this.readArticles.has(a.link)).length;
+    return window.rssStore ? window.rssStore.getUnreadCountForKeyword(keyword) : 0;
   }
 
   getUnreadCountForFeed(feed) {
-    if (!this.masterArticles || this.masterArticles.length === 0) return 0;
-    const feedUrl = feed.url;
-    const feedId = feed.id;
-    const feedName = (feed.name || '').toLowerCase().trim();
-
-    const items = this.masterArticles.filter(a => {
-      if (a.feedUrl && a.feedUrl === feedUrl) return true;
-      if (a.feedId && a.feedId === feedId) return true;
-      if (a.feedName && a.feedName.toLowerCase().trim() === feedName) return true;
-      return false;
-    });
-
-    return items.filter(a => !this.deletedArticles.has(a.link) && !this.readArticles.has(a.link)).length;
+    return window.rssStore ? window.rssStore.getUnreadCountForFeed(feed) : 0;
   }
 
   // -------------------------------------------------------------
@@ -304,7 +251,6 @@ class RssFullWidget {
     this.activeDesc = `Flux unifié des 7 derniers jours comprenant ${this.feeds.length} flux RSS et ${this.watchKeywords.length} sujets de veille surveillés`;
 
     this.renderSidebar();
-    this.showLoading('Chargement du flux unifié (Flux RSS + Veille)...');
 
     if (isManual && this.refreshBtn) {
       const icon = this.refreshBtn.querySelector('svg') || this.refreshBtn;
@@ -312,17 +258,18 @@ class RssFullWidget {
       setTimeout(() => icon.classList.remove('animate-spin'), 600);
     }
 
-    try {
-      const res = await fetch('/api/watch/unified');
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error || 'Erreur flux unifié');
+    if (!window.rssStore?.isLoaded && (!window.rssStore?.masterArticles || window.rssStore.masterArticles.length === 0)) {
+      this.showLoading('Chargement du flux unifié (Flux RSS + Veille)...');
+    }
 
-      this.masterArticles = (data.items || []).slice().sort((a, b) => this.getArticleTimestamp(b) - this.getArticleTimestamp(a));
-      this.articles = this.masterArticles;
+    try {
+      if (window.rssStore) {
+        await window.rssStore.fetchUnified(isManual);
+        this.articles = window.rssStore.getActiveMasterArticles();
+      }
       this.updateHeader();
       this.renderSidebar();
       this.renderArticles();
-      this.notifyStateChanged();
     } catch (err) {
       this.showError('Impossible de charger le flux unifié', err.message, () => this.selectUnified(true));
     }
@@ -345,21 +292,19 @@ class RssFullWidget {
     }
 
     try {
+      if (window.rssStore && !window.rssStore.isLoaded && window.rssStore.masterArticles.length === 0) {
+        window.rssStore.fetchUnified(false).catch(() => {});
+      }
+
       const res = await fetch(`/api/watch/feed?keyword=${encodeURIComponent(keyword)}`);
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Erreur recherche');
 
       this.articles = (data.items || []).slice().sort((a, b) => this.getArticleTimestamp(b) - this.getArticleTimestamp(a));
-      
-      // Mettre à jour le master cache si nécessaire
-      if (!this.masterArticles || this.masterArticles.length === 0) {
-        this.masterArticles = this.articles;
-      }
 
       this.updateHeader();
       this.renderSidebar();
       this.renderArticles();
-      this.notifyStateChanged();
     } catch (err) {
       this.showError(`Impossible de récupérer la veille pour "${keyword}"`, err.message, () => this.selectKeyword(keyword, true));
     }
@@ -385,6 +330,10 @@ class RssFullWidget {
     }
 
     try {
+      if (window.rssStore && !window.rssStore.isLoaded && window.rssStore.masterArticles.length === 0) {
+        window.rssStore.fetchUnified(false).catch(() => {});
+      }
+
       const res = await fetch(`/api/rss?url=${encodeURIComponent(url)}`);
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Erreur flux RSS');
@@ -401,14 +350,10 @@ class RssFullWidget {
       this.articles = rawItems.slice().sort((a, b) => this.getArticleTimestamp(b) - this.getArticleTimestamp(a));
 
       if (data.description) this.activeDesc = data.description;
-      if (!this.masterArticles || this.masterArticles.length === 0) {
-        this.masterArticles = this.articles;
-      }
 
       this.updateHeader();
       this.renderSidebar();
       this.renderArticles();
-      this.notifyStateChanged();
     } catch (err) {
       this.showError(`Impossible de charger le flux "${feedName}"`, err.message, () => this.selectFeed(url, true));
     }
@@ -459,22 +404,9 @@ class RssFullWidget {
   // -------------------------------------------------------------
 
   async addWatchKeyword(keyword) {
-    try {
-      const res = await fetch('/api/watch/keywords', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword })
-      });
-      const data = await res.json();
-      if (data.keywords) {
-        this.watchKeywords = data.keywords;
-        localStorage.setItem('devhub_watch_keywords', JSON.stringify(this.watchKeywords));
-      }
-    } catch {}
-
-    this.renderSidebar();
+    if (!window.rssStore) return;
+    await window.rssStore.addWatchKeyword(keyword);
     this.selectKeyword(keyword);
-    this.notifyStateChanged();
   }
 
   async deleteWatchKeyword(id, e) {
@@ -484,15 +416,8 @@ class RssFullWidget {
 
     if (!confirm(`Supprimer le sujet de veille "${kwName}" ?`)) return;
 
-    try {
-      const res = await fetch(`/api/watch/keywords/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.keywords) {
-        this.watchKeywords = data.keywords;
-        localStorage.setItem('devhub_watch_keywords', JSON.stringify(this.watchKeywords));
-      }
-    } catch {
-      this.watchKeywords = this.watchKeywords.filter(k => k.id !== id);
+    if (window.rssStore) {
+      await window.rssStore.deleteWatchKeyword(id);
     }
 
     if (this.activeMode === 'keyword' && this.activeTarget === kwName) {
@@ -500,7 +425,6 @@ class RssFullWidget {
     } else {
       this.renderSidebar();
     }
-    this.notifyStateChanged();
   }
 
   // -------------------------------------------------------------
@@ -508,22 +432,9 @@ class RssFullWidget {
   // -------------------------------------------------------------
 
   async addCustomFeed(name, url) {
-    try {
-      const res = await fetch('/api/rss/feeds', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, url })
-      });
-      const data = await res.json();
-      if (data.feeds) {
-        this.feeds = data.feeds;
-        localStorage.setItem('devhub_rss_feeds', JSON.stringify(this.feeds));
-      }
-    } catch {}
-
-    this.renderSidebar();
+    if (!window.rssStore) return;
+    await window.rssStore.addFeed(name, url);
     this.selectFeed(url);
-    this.notifyStateChanged();
   }
 
   async deleteFeed(feedId, e) {
@@ -533,15 +444,8 @@ class RssFullWidget {
 
     if (!confirm(`Supprimer définitivement le flux "${feedName}" ?`)) return;
 
-    try {
-      const res = await fetch(`/api/rss/feeds/${feedId}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.feeds) {
-        this.feeds = data.feeds;
-        localStorage.setItem('devhub_rss_feeds', JSON.stringify(this.feeds));
-      }
-    } catch {
-      this.feeds = this.feeds.filter(f => f.id !== feedId);
+    if (window.rssStore) {
+      await window.rssStore.deleteFeed(feedId);
     }
 
     if (this.activeMode === 'feed' && feed && this.activeTarget === feed.url) {
@@ -549,30 +453,15 @@ class RssFullWidget {
     } else {
       this.renderSidebar();
     }
-    this.notifyStateChanged();
   }
 
   async resetDefaultAll() {
     if (!confirm('Réinitialiser les flux RSS et les mots-clés de veille par défaut ?')) return;
 
-    try {
-      const [resFeeds, resKw] = await Promise.all([
-        fetch('/api/rss/feeds/reset', { method: 'POST' }),
-        fetch('/api/watch/keywords/reset', { method: 'POST' })
-      ]);
-
-      const dataFeeds = await resFeeds.json();
-      const dataKw = await resKw.json();
-
-      if (dataFeeds.feeds) this.feeds = dataFeeds.feeds;
-      if (dataKw.keywords) this.watchKeywords = dataKw.keywords;
-
-      localStorage.setItem('devhub_rss_feeds', JSON.stringify(this.feeds));
-      localStorage.setItem('devhub_watch_keywords', JSON.stringify(this.watchKeywords));
-    } catch {}
-
+    if (window.rssStore) {
+      await window.rssStore.resetDefaultAll();
+    }
     this.selectUnified();
-    this.notifyStateChanged();
   }
 
   // -------------------------------------------------------------
@@ -580,10 +469,8 @@ class RssFullWidget {
   // -------------------------------------------------------------
 
   renderSidebar() {
-    // Calcul de l'ensemble des articles actifs pour le badge global
-    const sourceArticles = (this.masterArticles && this.masterArticles.length > 0) ? this.masterArticles : this.articles;
-    const globalActive = sourceArticles.filter(a => !this.deletedArticles.has(a.link));
-    const globalUnread = globalActive.filter(a => !this.readArticles.has(a.link)).length;
+    // Calcul unifié directement depuis le store central
+    const globalUnread = window.rssStore ? window.rssStore.getGlobalUnreadCount() : 0;
 
     // 1. Bouton Tout afficher
     if (this.allBtnEl) {
@@ -923,86 +810,30 @@ class RssFullWidget {
   // ACTIONS SUR LES ARTICLES (LU, NON LU, SUPPRESSION)
   // -------------------------------------------------------------
 
-  async toggleRead(link, e) {
+  toggleRead(link, e) {
     if (e) e.stopPropagation();
-    if (!link) return;
-
+    if (!link || !window.rssStore) return;
     const willBeRead = !this.readArticles.has(link);
-    if (willBeRead) {
-      this.readArticles.add(link);
-    } else {
-      this.readArticles.delete(link);
-    }
-
-    localStorage.setItem('devhub_rss_read_articles', JSON.stringify([...this.readArticles]));
-    this.renderSidebar();
-    this.renderArticles();
-    this.notifyStateChanged();
-
-    // Persistance SQLite
-    try {
-      await fetch('/api/rss/read', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ link, isRead: willBeRead })
-      });
-    } catch {}
+    window.rssStore.setArticleRead(link, willBeRead);
   }
 
-  async markAllAsRead() {
-    const linksToMark = [];
-    this.articles.forEach(a => {
-      if (a.link && !this.readArticles.has(a.link)) {
-        this.readArticles.add(a.link);
-        linksToMark.push(a.link);
-      }
-    });
-
-    localStorage.setItem('devhub_rss_read_articles', JSON.stringify([...this.readArticles]));
-    this.renderSidebar();
-    this.renderArticles();
-    this.notifyStateChanged();
-
-    if (linksToMark.length > 0) {
-      try {
-        await fetch('/api/rss/read-all', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ links: linksToMark })
-        });
-      } catch {}
-    }
+  markAllAsRead() {
+    if (!window.rssStore) return;
+    const active = this.articles.filter(a => !this.deletedArticles.has(a.link));
+    const unread = active.filter(a => !this.readArticles.has(a.link));
+    const links = unread.map(a => a.link);
+    window.rssStore.markMultipleArticlesRead(links);
   }
 
-  async deleteArticle(link, e) {
+  deleteArticle(link, e) {
     if (e) e.stopPropagation();
-    if (!link) return;
-
-    this.deletedArticles.add(link);
-    localStorage.setItem('devhub_rss_deleted_articles', JSON.stringify([...this.deletedArticles]));
-    this.renderSidebar();
-    this.renderArticles();
-    this.notifyStateChanged();
-
-    try {
-      await fetch('/api/rss/delete-article', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ link })
-      });
-    } catch {}
+    if (!link || !window.rssStore) return;
+    window.rssStore.deleteArticle(link);
   }
 
-  async restoreDeletedArticles() {
-    this.deletedArticles.clear();
-    localStorage.setItem('devhub_rss_deleted_articles', JSON.stringify([]));
-    this.renderSidebar();
-    this.renderArticles();
-    this.notifyStateChanged();
-
-    try {
-      await fetch('/api/rss/restore-articles', { method: 'POST' });
-    } catch {}
+  restoreDeletedArticles() {
+    if (!window.rssStore) return;
+    window.rssStore.restoreDeletedArticles();
   }
 
   // -------------------------------------------------------------
@@ -1035,18 +866,8 @@ class RssFullWidget {
 
   renderArticleModalContent(article, currentIndex, totalCount) {
     // Marquer automatiquement comme lu à l'ouverture
-    if (!this.readArticles.has(article.link)) {
-      this.readArticles.add(article.link);
-      localStorage.setItem('devhub_rss_read_articles', JSON.stringify([...this.readArticles]));
-      this.renderSidebar();
-      this.renderArticles();
-      this.notifyStateChanged();
-
-      fetch('/api/rss/read', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ link: article.link, isRead: true })
-      }).catch(() => {});
+    if (window.rssStore && !this.readArticles.has(article.link)) {
+      window.rssStore.setArticleRead(article.link, true);
     }
 
     if (this.readerModalTitleEl) this.readerModalTitleEl.textContent = article.title;
