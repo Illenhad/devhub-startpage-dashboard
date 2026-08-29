@@ -261,3 +261,275 @@ export async function generateConversationTitle(promptText, model) {
     return promptText.slice(0, 30) + (promptText.length > 30 ? '...' : '');
   }
 }
+
+const onlineLibraryCache = new Map();
+const LIBRARY_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 heures de cache
+
+/**
+ * Récupère en direct la bibliothèque complète des modèles depuis ollama.com/library
+ * Permet de toujours obtenir les modèles récents et populaires sans être figé dans le code.
+ */
+export async function fetchOllamaOnlineLibrary(sort = 'popular', forceRefresh = false) {
+  const cacheKey = `ollama_lib_${sort}`;
+  const cached = onlineLibraryCache.get(cacheKey);
+
+  if (!forceRefresh && cached && (Date.now() - cached.timestamp < LIBRARY_CACHE_TTL_MS)) {
+    return cached.data;
+  }
+
+  try {
+    const url = `https://ollama.com/library?sort=${encodeURIComponent(sort)}`;
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+      },
+      signal: AbortSignal.timeout(6000)
+    });
+
+    if (response.ok) {
+      const html = await response.text();
+      const itemRegex = /<li[^>]*>\s*<a href="\/library\/([^"]+)"[^>]*>([\s\S]*?)<\/li>/gi;
+      const models = [];
+      let match;
+
+      while ((match = itemRegex.exec(html)) !== null) {
+        const slug = match[1];
+        const block = match[2];
+
+        // Description
+        const descMatch = block.match(/<p[^>]*class="[^"]*text-neutral-800[^"]*"[^>]*>([\s\S]*?)<\/p>/i);
+        let desc = descMatch ? descMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+        desc = desc.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+
+        // Capacités (tools, thinking, vision, embedding)
+        const capMatches = [...block.matchAll(/class="[^"]*text-indigo-600[^"]*"[^>]*>([^<]+)<\/span>/gi)].map(m => m[1].trim());
+
+        // Tailles
+        const sizeMatches = [...block.matchAll(/class="[^"]*text-blue-600[^"]*"[^>]*>([^<]+)<\/span>/gi)].map(m => m[1].trim());
+
+        // Pulls
+        const pullsMatch = block.match(/<span[^>]*>([0-9.]+[KMB]?)<\/span>\s*<span[^>]*>[^<]*Pulls/i);
+        const pulls = pullsMatch ? pullsMatch[1] : '';
+
+        // Catégorie suggérée
+        let category = 'general';
+        let categoryLabel = 'Polyvalent';
+        if (capMatches.includes('thinking')) {
+          category = 'reasoning';
+          categoryLabel = 'Raisonnement';
+        } else if (slug.includes('coder') || slug.includes('code') || slug.includes('dev')) {
+          category = 'code';
+          categoryLabel = 'Code & Dev';
+        } else if (capMatches.includes('embedding')) {
+          category = 'embedding';
+          categoryLabel = 'Embeddings';
+        } else if (sizeMatches.some(s => s === '1b' || s === '2b' || s === '3b' || s === '270m')) {
+          category = 'light';
+          categoryLabel = 'Léger & Rapide';
+        }
+
+        models.push({
+          name: slug,
+          label: slug,
+          desc: desc || `Modèle officiel ${slug} sur Ollama`,
+          category,
+          categoryLabel,
+          capabilities: capMatches,
+          sizes: sizeMatches,
+          pulls: pulls ? `${pulls} pulls` : '',
+          isOnline: true
+        });
+      }
+
+      if (models.length > 0) {
+        const result = {
+          source: 'online',
+          sort,
+          total: models.length,
+          updatedAt: new Date().toISOString(),
+          models
+        };
+        onlineLibraryCache.set(cacheKey, { data: result, timestamp: Date.now() });
+        return result;
+      }
+    }
+  } catch (err) {
+    console.warn('Impossible de joindre ollama.com/library en direct, repli sur la sélection locale:', err.message);
+  }
+
+  // Repli local en cas d'absence de connexion internet
+  return {
+    source: 'fallback',
+    sort,
+    total: 6,
+    updatedAt: new Date().toISOString(),
+    models: getCuratedModelLibrary().map(m => ({
+      ...m,
+      capabilities: [m.category],
+      sizes: [m.size.replace('~', '')],
+      pulls: 'Recommandé',
+      isOnline: false
+    }))
+  };
+}
+
+/**
+ * Bibliothèque de modèles populaires recommandés (Repli hors-ligne)
+ */
+export function getCuratedModelLibrary() {
+  return [
+    {
+      name: 'llama3.2:3b',
+      label: 'Llama 3.2 (3B)',
+      tag: 'Meta',
+      category: 'general',
+      categoryLabel: 'Polyvalent & Rapide',
+      size: '~2.0 Go',
+      desc: 'Le modèle compact phare de Meta. Très rapide, excellent en français, idéal au quotidien pour la synthèse et les questions.'
+    },
+    {
+      name: 'qwen2.5-coder:7b',
+      label: 'Qwen 2.5 Coder (7B)',
+      tag: 'Alibaba',
+      category: 'code',
+      categoryLabel: 'Spécialiste Code & Dev',
+      size: '~4.7 Go',
+      desc: 'L\'un des meilleurs modèles open-source pour le développement. Maîtrise JavaScript, Python, Bash, Docker, refactoring et debug.'
+    },
+    {
+      name: 'deepseek-r1:8b',
+      label: 'DeepSeek R1 (8B)',
+      tag: 'DeepSeek',
+      category: 'reasoning',
+      categoryLabel: 'Raisonnement & Math',
+      size: '~4.9 Go',
+      desc: 'Modèle de raisonnement avec chaîne de pensée détaillée (<think>). Remarquable pour la logique, les problèmes complexes et l\'analyse.'
+    },
+    {
+      name: 'mistral:7b',
+      label: 'Mistral (7B)',
+      tag: 'Mistral AI',
+      category: 'general',
+      categoryLabel: 'Référence Française',
+      size: '~4.1 Go',
+      desc: 'Le modèle iconique de Mistral AI. Excellente compréhension du français, écriture fluide, précis et polyvalent.'
+    },
+    {
+      name: 'phi4:14b',
+      label: 'Phi-4 (14B)',
+      tag: 'Microsoft',
+      category: 'reasoning',
+      categoryLabel: 'Haute Précision',
+      size: '~9.1 Go',
+      desc: 'Modèle de pointe de Microsoft entraîné sur des données synthétiques de haute qualité. Très fort en logique et raisonnement.'
+    },
+    {
+      name: 'gemma2:2b',
+      label: 'Gemma 2 (2B)',
+      tag: 'Google',
+      category: 'light',
+      categoryLabel: 'Ultra-Léger & Économe',
+      size: '~1.6 Go',
+      desc: 'Conçu par Google DeepMind pour les machines avec mémoire limitée. Démarre instantanément et consomme très peu de RAM.'
+    }
+  ];
+}
+
+/**
+ * Télécharge un modèle Ollama (pull) et stream la progression via Server-Sent Events
+ */
+export async function streamOllamaPull(modelName, res) {
+  if (!modelName || typeof modelName !== 'string') {
+    res.status(400).json({ error: 'Le nom du modèle est requis' });
+    return;
+  }
+
+  const cleanName = modelName.trim();
+  const controller = new AbortController();
+  const handleClientClose = () => {
+    controller.abort();
+  };
+  res.on('close', handleClientClose);
+
+  try {
+    const response = await fetch(`${OLLAMA_HOST}/api/pull`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: cleanName,
+        stream: true
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      res.status(response.status).json({ error: `Erreur Ollama Pull: ${errorText}` });
+      return;
+    }
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n').filter(Boolean);
+
+      for (const line of lines) {
+        try {
+          const parsed = JSON.parse(line);
+          res.write(`data: ${JSON.stringify(parsed)}\n\n`);
+          if (parsed.status === 'success') {
+            res.write(`data: [DONE]\n\n`);
+            res.end();
+            return;
+          }
+        } catch {}
+      }
+    }
+    res.end();
+  } catch (err) {
+    if (controller.signal.aborted) {
+      return;
+    }
+    console.error('Erreur streaming Ollama Pull:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message || 'Erreur lors du téléchargement du modèle' });
+    } else {
+      res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
+      res.end();
+    }
+  } finally {
+    res.off('close', handleClientClose);
+  }
+}
+
+/**
+ * Supprime un modèle local Ollama (DELETE /api/delete)
+ */
+export async function deleteOllamaModel(modelName) {
+  if (!modelName || typeof modelName !== 'string') {
+    throw new Error('Nom de modèle invalide');
+  }
+
+  const res = await fetch(`${OLLAMA_HOST}/api/delete`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: modelName.trim() })
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Erreur suppression (${res.status}): ${errorText}`);
+  }
+
+  return { success: true, message: `Modèle ${modelName} supprimé avec succès` };
+}
+

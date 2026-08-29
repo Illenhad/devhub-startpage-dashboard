@@ -109,6 +109,65 @@ class OllamaFullWidget {
     this.personaModalClose = document.getElementById('ollama-persona-modal-close');
     this.personaModalCancel = document.getElementById('ollama-persona-modal-cancel');
 
+    // Modal Gestion des Modèles
+    this.manageModelsBtn = document.getElementById('full-ollama-manage-models-btn');
+    this.modelsModal = document.getElementById('ollama-models-modal');
+    this.modelsModalClose = document.getElementById('ollama-models-modal-close');
+    this.modelsSummaryEl = document.getElementById('ollama-models-summary');
+    this.pullProgressContainer = document.getElementById('ollama-pull-progress-container');
+    this.pullModelNameEl = document.getElementById('ollama-pull-model-name');
+    this.pullPercentageEl = document.getElementById('ollama-pull-percentage');
+    this.pullProgressBar = document.getElementById('ollama-pull-progress-bar');
+    this.pullStatusTextEl = document.getElementById('ollama-pull-status-text');
+    this.pullBytesEl = document.getElementById('ollama-pull-bytes');
+    this.pullCustomForm = document.getElementById('ollama-pull-custom-form');
+    this.pullCustomInput = document.getElementById('ollama-pull-custom-input');
+    this.pullCustomBtn = document.getElementById('ollama-pull-custom-btn');
+    this.recommendedModelsList = document.getElementById('ollama-recommended-models-list');
+    this.installedModelsList = document.getElementById('ollama-installed-models-list');
+    this.installedCountEl = document.getElementById('ollama-installed-count');
+    this.libTabPopular = document.getElementById('ollama-lib-tab-popular');
+    this.libTabNewest = document.getElementById('ollama-lib-tab-newest');
+    this.libTabCurated = document.getElementById('ollama-lib-tab-curated');
+    this.libSearchInput = document.getElementById('ollama-lib-search-input');
+    this.libRefreshBtn = document.getElementById('ollama-lib-refresh-btn');
+    this.currentLibSort = 'popular';
+    this.libSearchQuery = '';
+    this.libraryCache = {};
+    this.isPulling = false;
+    this.pullAbortController = null;
+    this.curatedLibrary = [];
+
+    // Éléments Statistiques de Session & Conversation
+    this.sessionStatsBadge = document.getElementById('full-ollama-session-stats-badge');
+    this.sessionStatsText = document.getElementById('full-ollama-session-stats-text');
+    this.statsModal = document.getElementById('ollama-stats-modal');
+    this.statsModalClose = document.getElementById('ollama-stats-modal-close');
+    this.statsSessionTitle = document.getElementById('ollama-stats-session-title');
+    this.statsTotalTokens = document.getElementById('ollama-stats-total-tokens');
+    this.statsTokensSplit = document.getElementById('ollama-stats-tokens-split');
+    this.statsTotalTime = document.getElementById('ollama-stats-total-time');
+    this.statsAvgSpeed = document.getElementById('ollama-stats-avg-speed');
+    this.statsMsgCount = document.getElementById('ollama-stats-msg-count');
+    this.statsThinkingCount = document.getElementById('ollama-stats-thinking-count');
+    this.statsModelsUsed = document.getElementById('ollama-stats-models-used');
+    this.statsMessagesBreakdown = document.getElementById('ollama-stats-messages-breakdown');
+
+    // Éléments Modale Métriques d'un Message
+    this.msgStatsModal = document.getElementById('ollama-message-stats-modal');
+    this.msgStatsModalClose = document.getElementById('ollama-message-stats-modal-close');
+    this.msgModalModel = document.getElementById('ollama-msg-modal-model');
+    this.msgModalDuration = document.getElementById('ollama-msg-modal-duration');
+    this.msgModalSpeed = document.getElementById('ollama-msg-modal-speed');
+    this.msgModalTotalTokens = document.getElementById('ollama-msg-modal-total-tokens');
+    this.msgModalLoad = document.getElementById('ollama-msg-modal-load');
+    this.msgModalPrompt = document.getElementById('ollama-msg-modal-prompt');
+    this.msgModalEval = document.getElementById('ollama-msg-modal-eval');
+    this.msgModalThinkingBox = document.getElementById('ollama-msg-modal-thinking-box');
+    this.msgModalThinkingLen = document.getElementById('ollama-msg-modal-thinking-len');
+    this.msgModalThinkingContent = document.getElementById('ollama-msg-modal-thinking-content');
+    this.msgModalPromptText = document.getElementById('ollama-msg-modal-prompt-text');
+
     // Éléments Fichiers & Drag-and-Drop
     this.fileInput = document.getElementById('full-ollama-file-input');
     this.attachBtn = document.getElementById('full-ollama-attach-btn');
@@ -826,10 +885,67 @@ class OllamaFullWidget {
       });
     }
 
-    // Fermeture de la modale au clic extérieur ou Échap
+    // Modal Gestion des Modèles : Événements
+    if (this.manageModelsBtn) {
+      this.manageModelsBtn.addEventListener('click', () => this.openModelsModal());
+    }
+    if (this.modelsModalClose) {
+      this.modelsModalClose.addEventListener('click', () => this.closeModelsModal());
+    }
+    if (this.pullCustomForm) {
+      this.pullCustomForm.addEventListener('submit', (e) => this.handleCustomModelPull(e));
+    }
+
+    // Onglets de la bibliothèque (Populaires, Nouveautés, Sélection)
+    if (this.libTabPopular) {
+      this.libTabPopular.addEventListener('click', () => this.switchLibraryTab('popular'));
+    }
+    if (this.libTabNewest) {
+      this.libTabNewest.addEventListener('click', () => this.switchLibraryTab('newest'));
+    }
+    if (this.libTabCurated) {
+      this.libTabCurated.addEventListener('click', () => this.switchLibraryTab('curated'));
+    }
+
+    // Recherche en direct dans la bibliothèque
+    if (this.libSearchInput) {
+      this.libSearchInput.addEventListener('input', (e) => {
+        this.libSearchQuery = e.target.value.toLowerCase().trim();
+        this.renderModelsModalContent();
+      });
+    }
+
+    // Bouton forcer l'actualisation depuis ollama.com
+    if (this.libRefreshBtn) {
+      this.libRefreshBtn.addEventListener('click', () => this.refreshLibraryFromOnline());
+    }
+
+    // Modal Statistiques de Conversation : Événements
+    if (this.sessionStatsBadge) {
+      this.sessionStatsBadge.addEventListener('click', () => this.openSessionStatsModal());
+    }
+    if (this.statsModalClose) {
+      this.statsModalClose.addEventListener('click', () => this.closeSessionStatsModal());
+    }
+    if (this.msgStatsModalClose) {
+      this.msgStatsModalClose.addEventListener('click', () => this.closeMessageStatsModal());
+    }
+
+    // Fermeture des modales au clic extérieur ou Échap
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && this.personaModal && !this.personaModal.classList.contains('hidden')) {
-        this.closeNewPersonaModal();
+      if (e.key === 'Escape') {
+        if (this.personaModal && !this.personaModal.classList.contains('hidden')) {
+          this.closeNewPersonaModal();
+        }
+        if (this.modelsModal && !this.modelsModal.classList.contains('hidden') && !this.isPulling) {
+          this.closeModelsModal();
+        }
+        if (this.statsModal && !this.statsModal.classList.contains('hidden')) {
+          this.closeSessionStatsModal();
+        }
+        if (this.msgStatsModal && !this.msgStatsModal.classList.contains('hidden')) {
+          this.closeMessageStatsModal();
+        }
       }
     });
 
@@ -907,6 +1023,8 @@ class OllamaFullWidget {
       } else {
         this.createNewSession();
       }
+    } else {
+      this.updateSessionStatsUI();
     }
   }
 
@@ -963,6 +1081,438 @@ class OllamaFullWidget {
     }
   }
 
+  // --- Gestionnaire & Téléchargement des Modèles Ollama ---
+
+  async openModelsModal() {
+    if (!this.modelsModal) return;
+    this.modelsModal.classList.remove('hidden');
+    document.documentElement.classList.add('modal-open');
+    document.body.classList.add('modal-open');
+
+    // Récupérer la bibliothèque et rafraîchir le contenu
+    await this.fetchCuratedLibrary(this.currentLibSort);
+    this.renderModelsModalContent();
+  }
+
+  closeModelsModal() {
+    if (!this.modelsModal) return;
+    if (this.isPulling) {
+      if (!confirm('Un téléchargement est en cours. Voulez-vous masquer la fenêtre ? Le téléchargement continuera en arrière-plan.')) {
+        return;
+      }
+    }
+    this.modelsModal.classList.add('hidden');
+    document.documentElement.classList.remove('modal-open');
+    document.body.classList.remove('modal-open');
+  }
+
+  async switchLibraryTab(sort) {
+    this.currentLibSort = sort;
+
+    const activeClasses = ['notif-badge-solid', 'text-white', 'font-semibold'];
+    const inactiveClasses = ['text-zinc-400', 'hover:text-white', 'font-medium'];
+
+    [
+      { el: this.libTabPopular, sort: 'popular' },
+      { el: this.libTabNewest, sort: 'newest' },
+      { el: this.libTabCurated, sort: 'curated' }
+    ].forEach(({ el, sort: s }) => {
+      if (!el) return;
+      if (s === sort) {
+        el.classList.remove(...inactiveClasses);
+        el.classList.add(...activeClasses);
+      } else {
+        el.classList.remove(...activeClasses);
+        el.classList.add(...inactiveClasses);
+      }
+    });
+
+    if (this.recommendedModelsList) {
+      this.recommendedModelsList.innerHTML = `
+        <div class="col-span-full py-8 text-center text-xs text-zinc-400 flex items-center justify-center gap-2">
+          <span class="w-2 h-2 rounded-full notif-badge-dot animate-ping"></span>
+          <span>Chargement des modèles depuis ollama.com...</span>
+        </div>
+      `;
+    }
+
+    await this.fetchCuratedLibrary(sort);
+    this.renderModelsModalContent();
+  }
+
+  async refreshLibraryFromOnline() {
+    if (this.libRefreshBtn) {
+      this.libRefreshBtn.classList.add('animate-spin');
+    }
+    delete this.libraryCache[this.currentLibSort];
+    await this.fetchCuratedLibrary(this.currentLibSort, true);
+    if (this.libRefreshBtn) {
+      this.libRefreshBtn.classList.remove('animate-spin');
+    }
+    this.renderModelsModalContent();
+  }
+
+  async fetchCuratedLibrary(sort = 'popular', forceRefresh = false) {
+    if (sort === 'curated') {
+      try {
+        const res = await fetch('/api/ollama/models/library');
+        const data = await res.json();
+        this.curatedLibrary = data.models || [];
+      } catch (err) {
+        console.error('Erreur chargement sélection:', err);
+      }
+      return;
+    }
+
+    if (!forceRefresh && this.libraryCache[sort] && this.libraryCache[sort].length > 0) {
+      this.curatedLibrary = this.libraryCache[sort];
+      return;
+    }
+
+    try {
+      const url = `/api/ollama/models/library?sort=${encodeURIComponent(sort)}${forceRefresh ? '&refresh=true' : ''}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.models)) {
+        this.curatedLibrary = data.models;
+        this.libraryCache[sort] = data.models;
+      }
+    } catch (err) {
+      console.error('Erreur chargement bibliothèque en direct:', err);
+    }
+  }
+
+  renderModelsModalContent() {
+    const installed = this.models || [];
+
+    // En-tête résumé
+    if (this.modelsSummaryEl) {
+      this.modelsSummaryEl.textContent = `${installed.length} modèle(s) installé(s) localement`;
+    }
+    if (this.installedCountEl) {
+      this.installedCountEl.textContent = `${installed.length} modèle(s)`;
+    }
+
+    // 1. Liste des modèles de la bibliothèque
+    if (this.recommendedModelsList) {
+      let library = this.curatedLibrary || [];
+
+      // Filtrage par recherche
+      if (this.libSearchQuery) {
+        const q = this.libSearchQuery;
+        library = library.filter(m => 
+          (m.name && m.name.toLowerCase().includes(q)) ||
+          (m.desc && m.desc.toLowerCase().includes(q)) ||
+          (m.categoryLabel && m.categoryLabel.toLowerCase().includes(q)) ||
+          (m.capabilities && m.capabilities.some(c => c.toLowerCase().includes(q))) ||
+          (m.sizes && m.sizes.some(s => s.toLowerCase().includes(q)))
+        );
+      }
+
+      if (library.length === 0) {
+        this.recommendedModelsList.innerHTML = `
+          <div class="col-span-full py-8 text-center text-xs text-zinc-500">
+            Aucun modèle ne correspond à votre recherche "${this.escapeHtml(this.libSearchQuery)}".
+          </div>
+        `;
+      } else {
+        this.recommendedModelsList.innerHTML = library.slice(0, 40).map(rec => {
+          // Vérification si le modèle ou l'une de ses déclinaisons est installé
+          const isInstalled = installed.some(m => {
+            const mBase = m.name.split(':')[0];
+            const recBase = rec.name.split(':')[0];
+            return m.name === rec.name || mBase === recBase;
+          });
+
+          // Badges de capacités
+          const capBadges = (rec.capabilities || []).map(cap => {
+            if (cap === 'thinking') return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-purple-500/20 text-purple-300 font-semibold">🧠 thinking</span>';
+            if (cap === 'tools') return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-blue-500/20 text-blue-300 font-semibold">🛠️ tools</span>';
+            if (cap === 'vision') return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/20 text-emerald-300 font-semibold">👁️ vision</span>';
+            if (cap === 'embedding') return '<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-500/20 text-amber-300 font-semibold">📐 embed</span>';
+            return `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-zinc-800 text-zinc-400">${this.escapeHtml(cap)}</span>`;
+          }).join('');
+
+          // Tailles disponibles sous forme de tags cliquables
+          const sizePills = (rec.sizes || []).map(size => {
+            const fullTagName = `${rec.name}:${size}`;
+            const isThisSizeInstalled = installed.some(m => m.name === fullTagName);
+            if (isThisSizeInstalled) {
+              return `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" title="Cette version est déjà installée">${size} ✓</span>`;
+            }
+            return `
+              <button
+                type="button"
+                onclick="window.ollamaFullWidget.startModelPull('${this.escapeHtml(fullTagName)}')"
+                ${this.isPulling ? 'disabled' : ''}
+                class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-zinc-900 hover:bg-brand-500/20 hover:border-brand-500/40 border border-zinc-800 text-zinc-300 hover:text-brand-300 transition-all cursor-pointer disabled:opacity-40"
+                title="Télécharger la version ${size}"
+              >
+                + ${size}
+              </button>
+            `;
+          }).join('');
+
+          return `
+            <div class="p-3.5 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 flex flex-col justify-between gap-3 hover:border-zinc-700 transition-all group">
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <span class="font-bold text-xs text-white truncate group-hover:text-brand-300 transition-colors">${this.escapeHtml(rec.label || rec.name)}</span>
+                    ${rec.tag ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-mono bg-zinc-800 text-zinc-400 shrink-0">${rec.tag}</span>` : ''}
+                  </div>
+                  ${rec.pulls ? `<span class="text-[10px] font-mono text-zinc-500 shrink-0 flex items-center gap-1"><span>📥</span> <span>${rec.pulls}</span></span>` : ''}
+                </div>
+
+                <p class="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">${this.escapeHtml(rec.desc || '')}</p>
+
+                <!-- Capacités et Tailles -->
+                <div class="flex flex-wrap gap-1 items-center pt-0.5">
+                  ${capBadges}
+                  ${sizePills}
+                </div>
+              </div>
+              
+              <div class="flex items-center justify-between pt-2 border-t border-zinc-800/40">
+                <span class="text-[10px] text-zinc-500 font-medium">${rec.categoryLabel || 'Modèle Ollama'}</span>
+                ${isInstalled ? `
+                  <span class="px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-semibold flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span>Installé</span>
+                  </span>
+                ` : `
+                  <button
+                    type="button"
+                    onclick="window.ollamaFullWidget.startModelPull('${this.escapeHtml(rec.name)}')"
+                    ${this.isPulling ? 'disabled' : ''}
+                    class="px-3 py-1 rounded-xl notif-badge-solid text-white text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  >
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    <span>Télécharger</span>
+                  </button>
+                `}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // 2. Liste des modèles installés localement
+    if (this.installedModelsList) {
+      if (installed.length === 0) {
+        this.installedModelsList.innerHTML = `
+          <div class="p-4 rounded-2xl bg-zinc-950/40 border border-zinc-800 text-center text-xs text-zinc-500">
+            Aucun modèle installé. Choisissez un modèle recommandé ci-dessus ou téléchargez-en un par son nom.
+          </div>
+        `;
+      } else {
+        this.installedModelsList.innerHTML = installed.map(m => {
+          const isCurrentActive = m.name === this.selectedModel;
+          return `
+            <div class="p-3 rounded-2xl bg-zinc-950/70 border ${isCurrentActive ? 'border-brand-500/40 bg-brand-500/5' : 'border-zinc-800/80'} flex items-center justify-between gap-3 transition-all hover:border-zinc-700">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm shrink-0">
+                  🦙
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono text-xs font-bold text-zinc-100 truncate">${this.escapeHtml(m.name)}</span>
+                    ${isCurrentActive ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold notif-badge-solid text-white shrink-0">Actif</span>' : ''}
+                  </div>
+                  <div class="flex items-center gap-2 text-[10px] text-zinc-400 font-mono mt-0.5">
+                    <span>${m.size}</span>
+                    ${m.parameter_size ? `<span>• ${m.parameter_size}</span>` : ''}
+                    ${m.family ? `<span>• ${m.family}</span>` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                ${!isCurrentActive ? `
+                  <button
+                    type="button"
+                    onclick="window.ollamaFullWidget.quickSelectModel('${this.escapeHtml(m.name)}')"
+                    class="px-2.5 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-semibold transition-all cursor-pointer"
+                    title="Définir comme modèle actif pour le chat"
+                  >
+                    Activer
+                  </button>
+                ` : ''}
+                <button
+                  type="button"
+                  onclick="window.ollamaFullWidget.deleteModel('${this.escapeHtml(m.name)}')"
+                  ${this.isPulling ? 'disabled' : ''}
+                  class="p-1.5 rounded-xl bg-zinc-900 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-400 border border-zinc-800 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Supprimer ce modèle pour libérer de l'espace"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+  }
+
+  quickSelectModel(modelName) {
+    this.selectedModel = modelName;
+    if (this.modelSelect) this.modelSelect.value = modelName;
+    localStorage.setItem('devhub_full_ollama_model', modelName);
+    this.updateModelDetails();
+    this.renderModelsModalContent();
+  }
+
+  handleCustomModelPull(e) {
+    e.preventDefault();
+    if (!this.pullCustomInput) return;
+    const modelName = this.pullCustomInput.value.trim();
+    if (!modelName) return;
+    this.startModelPull(modelName);
+    this.pullCustomInput.value = '';
+  }
+
+  async startModelPull(modelName) {
+    if (this.isPulling) {
+      alert('Un téléchargement est déjà en cours. Veuillez patienter.');
+      return;
+    }
+
+    this.isPulling = true;
+    this.renderModelsModalContent();
+
+    if (this.pullProgressContainer) {
+      this.pullProgressContainer.classList.remove('hidden');
+    }
+    if (this.pullModelNameEl) this.pullModelNameEl.textContent = modelName;
+    if (this.pullPercentageEl) this.pullPercentageEl.textContent = '0%';
+    if (this.pullProgressBar) this.pullProgressBar.style.width = '0%';
+    if (this.pullStatusTextEl) this.pullStatusTextEl.textContent = 'Connexion à la bibliothèque Ollama...';
+    if (this.pullBytesEl) this.pullBytesEl.textContent = '0 Mo / 0 Mo';
+
+    try {
+      const res = await fetch('/api/ollama/models/pull', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: modelName })
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `Erreur serveur HTTP ${res.status}`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = decoder.decode(value, { stream: true });
+        const lines = text.split('\n').filter(Boolean);
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const dataStr = line.replace('data: ', '').trim();
+          if (dataStr === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(dataStr);
+            
+            if (parsed.error) {
+              throw new Error(parsed.error);
+            }
+
+            // Calcul du pourcentage et mise à jour de la barre
+            if (parsed.completed && parsed.total) {
+              const pct = Math.min(100, Math.round((parsed.completed / parsed.total) * 100));
+              if (this.pullPercentageEl) this.pullPercentageEl.textContent = `${pct}%`;
+              if (this.pullProgressBar) this.pullProgressBar.style.width = `${pct}%`;
+              if (this.pullBytesEl) {
+                this.pullBytesEl.textContent = `${this.formatBytes(parsed.completed)} / ${this.formatBytes(parsed.total)}`;
+              }
+            }
+
+            // Statut lisible
+            if (parsed.status) {
+              let friendlyStatus = parsed.status;
+              if (parsed.status.includes('pulling manifest')) friendlyStatus = 'Récupération du manifeste...';
+              else if (parsed.status.includes('downloading')) friendlyStatus = 'Téléchargement des couches du modèle...';
+              else if (parsed.status.includes('verifying')) friendlyStatus = 'Vérification de l’intégrité (SHA256)...';
+              else if (parsed.status.includes('writing manifest')) friendlyStatus = 'Finalisation de l’installation...';
+              else if (parsed.status === 'success') friendlyStatus = 'Modèle téléchargé avec succès !';
+
+              if (this.pullStatusTextEl) this.pullStatusTextEl.textContent = friendlyStatus;
+            }
+
+            if (parsed.status === 'success') {
+              if (this.pullPercentageEl) this.pullPercentageEl.textContent = '100%';
+              if (this.pullProgressBar) this.pullProgressBar.style.width = '100%';
+            }
+          } catch (parseErr) {
+            // Non-fatal parse warning
+          }
+        }
+      }
+
+      // Rechargement des modèles Ollama
+      await this.fetchModels();
+      
+      // Sélection automatique du modèle nouvellement installé
+      this.selectedModel = modelName;
+      if (this.modelSelect) this.modelSelect.value = modelName;
+      localStorage.setItem('devhub_full_ollama_model', modelName);
+      this.updateModelDetails();
+
+      if (this.pullStatusTextEl) {
+        this.pullStatusTextEl.textContent = `✨ ${modelName} est prêt et actif !`;
+      }
+
+      setTimeout(() => {
+        if (this.pullProgressContainer) {
+          this.pullProgressContainer.classList.add('hidden');
+        }
+      }, 2500);
+
+    } catch (err) {
+      console.error('Erreur pull modèle:', err);
+      if (this.pullStatusTextEl) {
+        this.pullStatusTextEl.textContent = `❌ Erreur : ${err.message}`;
+      }
+      if (this.pullPercentageEl) this.pullPercentageEl.textContent = 'Échec';
+    } finally {
+      this.isPulling = false;
+      this.renderModelsModalContent();
+    }
+  }
+
+  async deleteModel(modelName) {
+    if (!confirm(`Voulez-vous vraiment supprimer le modèle "${modelName}" de votre machine ?\nCette action libérera son espace disque.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/ollama/models/${encodeURIComponent(modelName)}`, {
+        method: 'DELETE'
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur lors de la suppression');
+      }
+
+      // Recharger les modèles disponibles
+      await this.fetchModels();
+      this.renderModelsModalContent();
+
+    } catch (err) {
+      console.error('Erreur suppression modèle:', err);
+      alert(`Impossible de supprimer le modèle : ${err.message}`);
+    }
+  }
+
   // --- Gestion des Sessions de Chat ---
 
   createNewSession() {
@@ -985,6 +1535,7 @@ class OllamaFullWidget {
     this.saveSessionsToStorage();
     this.renderSessionsList();
     this.renderMessages();
+    this.updateSessionStatsUI();
 
     if (this.promptInput) {
       this.promptInput.value = '';
@@ -1017,6 +1568,7 @@ class OllamaFullWidget {
     this.updateSystemPromptUI();
     this.renderSessionsList();
     this.renderMessages();
+    this.updateSessionStatsUI();
   }
 
   deleteSession(sessionId, e) {
@@ -1318,7 +1870,18 @@ class OllamaFullWidget {
                 <p class="text-xs whitespace-pre-wrap leading-relaxed">${this.escapeHtml(userTextToDisplay)}</p>
               ` : `
                 <div class="markdown-body text-xs space-y-2" id="msg-content-${idx}">
-                  ${this.parseMarkdown(m.content)}
+                  ${(!m.content || m.content.trim() === '') ? `
+                    <div class="flex items-center gap-2.5 py-1 text-zinc-400 animate-fade-in">
+                      <div class="typing-indicator">
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                      </div>
+                      <span class="text-xs text-zinc-400 font-mono animate-pulse">
+                        ${this.isGenerating ? "L'IA réfléchit..." : "En attente de réponse..."}
+                      </span>
+                    </div>
+                  ` : this.parseMarkdown(m.content)}
                 </div>
 
                 ${(isInterrupted || isError) ? `
@@ -1359,6 +1922,18 @@ class OllamaFullWidget {
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                   <span>Régénérer</span>
                 </button>
+
+                ${(m.stats || (m.thinking && m.thinking.trim())) ? `
+                  <button
+                    type="button"
+                    onclick="window.ollamaFullWidget.openMessageStatsModal(${idx})"
+                    class="text-[10px] ${(m.thinking && m.thinking.trim()) ? 'text-purple-400 hover:text-purple-300 font-semibold' : 'text-zinc-400 hover:text-indigo-300'} flex items-center gap-1 transition-colors px-1.5 py-0.5 rounded hover:bg-zinc-800/80 cursor-pointer"
+                    title="Voir les métriques et la réflexion de cette réponse"
+                  >
+                    <span>${(m.thinking && m.thinking.trim()) ? '🧠' : '📊'}</span>
+                    <span>${(m.thinking && m.thinking.trim()) ? 'Réflexion & Infos' : 'Infos'}</span>
+                  </button>
+                ` : ''}
               `}
 
               <button
@@ -1586,6 +2161,7 @@ class OllamaFullWidget {
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let accumulatedText = '';
+      let accumulatedThinking = '';
 
       const targetEl = document.getElementById(`msg-content-${assistantMsgIndex}`);
 
@@ -1603,29 +2179,89 @@ class OllamaFullWidget {
 
             try {
               const parsed = JSON.parse(dataStr);
+
+              // 1. Capture du flux de raisonnement (modèles reasoning : DeepSeek-R1, Gemma, Qwen...)
+              if (parsed.message?.thinking) {
+                accumulatedThinking += parsed.message.thinking;
+                if (this.messages[assistantMsgIndex]) {
+                  this.messages[assistantMsgIndex].thinking = accumulatedThinking;
+                }
+                if (targetEl) {
+                  targetEl.innerHTML = this.renderStreamingContent(accumulatedThinking, accumulatedText);
+                }
+                this.scrollToBottom();
+              }
+
+              // 2. Capture du flux de réponse textuelle
               if (parsed.message?.content) {
                 accumulatedText += parsed.message.content;
                 if (this.messages[assistantMsgIndex]) {
                   this.messages[assistantMsgIndex].content = accumulatedText;
                 }
                 if (targetEl) {
-                  targetEl.innerHTML = this.parseMarkdown(accumulatedText) + '<span class="typing-cursor"></span>';
+                  targetEl.innerHTML = this.renderStreamingContent(accumulatedThinking, accumulatedText);
                 }
                 this.scrollToBottom();
+              }
+
+              // 3. Capture des métriques lorsque done: true
+              if (parsed.done) {
+                const totalMs = parsed.total_duration ? Math.round(parsed.total_duration / 1e6) : 0;
+                const loadMs = parsed.load_duration ? Math.round(parsed.load_duration / 1e6) : 0;
+                const promptEvalMs = parsed.prompt_eval_duration ? Math.round(parsed.prompt_eval_duration / 1e6) : 0;
+                const evalMs = parsed.eval_duration ? Math.round(parsed.eval_duration / 1e6) : 0;
+                const promptTokens = parsed.prompt_eval_count || 0;
+                const evalTokens = parsed.eval_count || 0;
+                const totalTokens = promptTokens + evalTokens;
+                const tokPerSec = evalMs > 0 ? parseFloat((evalTokens / (evalMs / 1000)).toFixed(1)) : 0;
+
+                const stats = {
+                  totalDurationMs: totalMs,
+                  loadDurationMs: loadMs,
+                  promptEvalDurationMs: promptEvalMs,
+                  evalDurationMs: evalMs,
+                  promptTokens,
+                  evalTokens,
+                  totalTokens,
+                  tokPerSec,
+                  hasThinking: Boolean(accumulatedThinking && accumulatedThinking.trim()),
+                  thinkingLength: accumulatedThinking ? accumulatedThinking.length : 0
+                };
+
+                if (this.messages[assistantMsgIndex]) {
+                  this.messages[assistantMsgIndex].stats = stats;
+                  this.messages[assistantMsgIndex].thinking = accumulatedThinking;
+                }
               }
             } catch {}
           }
         }
       }
 
-      // Finaliser le message
+      // Finaliser le message : si <think>...</think> est dans le texte, l'extraire dans thinking pour alléger la bulle
+      if (accumulatedText.includes('<think>')) {
+        const thinkMatch = accumulatedText.match(/<think>([\s\S]*?)<\/think>/i);
+        if (thinkMatch) {
+          if (!accumulatedThinking) {
+            accumulatedThinking = thinkMatch[1].trim();
+          }
+          accumulatedText = accumulatedText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+        }
+      }
+
       if (this.messages[assistantMsgIndex]) {
         this.messages[assistantMsgIndex].content = accumulatedText;
+        this.messages[assistantMsgIndex].thinking = accumulatedThinking;
         this.messages[assistantMsgIndex].isInterrupted = false;
+        if (this.messages[assistantMsgIndex].stats) {
+          this.messages[assistantMsgIndex].stats.hasThinking = Boolean(accumulatedThinking && accumulatedThinking.trim());
+          this.messages[assistantMsgIndex].stats.thinkingLength = accumulatedThinking ? accumulatedThinking.length : 0;
+        }
       }
-      if (targetEl) {
-        targetEl.innerHTML = this.parseMarkdown(accumulatedText);
-      }
+      
+      // Re-render complet pour figer la réponse et afficher la barre de métriques
+      this.renderMessages();
+      this.updateSessionStatsUI();
       this.attachCopyCodeButtons();
 
       if (currentSession) {
@@ -1635,7 +2271,11 @@ class OllamaFullWidget {
     } catch (err) {
       if (err.name === 'AbortError') {
         if (this.messages[assistantMsgIndex]) {
-          this.messages[assistantMsgIndex].content += '\n\n*(Génération interrompue)*';
+          if (!this.messages[assistantMsgIndex].content.trim()) {
+            this.messages[assistantMsgIndex].content = '*(Génération interrompue avant réponse)*';
+          } else {
+            this.messages[assistantMsgIndex].content += '\n\n*(Génération interrompue)*';
+          }
           this.messages[assistantMsgIndex].isInterrupted = true;
         }
       } else {
@@ -1660,6 +2300,259 @@ class OllamaFullWidget {
     }
   }
 
+  renderStreamingContent(thinking, text) {
+    let html = '';
+
+    if (thinking && thinking.trim()) {
+      if (!text || !text.trim()) {
+        // En cours de réflexion : volet ouvert avec curseur
+        html += `
+          <details class="think-block mb-3 rounded-2xl bg-purple-950/25 border border-purple-500/25 p-3 text-xs text-zinc-400" open>
+            <summary class="font-mono text-[11px] text-purple-300 font-semibold cursor-pointer flex items-center gap-2 select-none">
+              <span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+              <span>🧠 Réflexion en cours...</span>
+            </summary>
+            <div class="mt-2 text-[11px] text-zinc-300 leading-relaxed font-mono whitespace-pre-wrap pl-2.5 border-l-2 border-purple-500/40">${this.escapeHtml(thinking)}<span class="typing-cursor"></span></div>
+          </details>
+        `;
+      } else {
+        // Réflexion achevée : volet discret
+        html += `
+          <details class="think-block mb-3 rounded-2xl bg-purple-950/15 border border-purple-500/20 p-2.5 text-xs text-zinc-400">
+            <summary class="font-mono text-[11px] text-purple-300 font-semibold cursor-pointer flex items-center gap-2 select-none hover:text-purple-200">
+              <span>🧠 Processus de réflexion (${thinking.length} car.)</span>
+            </summary>
+            <div class="mt-2 text-[11px] text-zinc-300 leading-relaxed font-mono whitespace-pre-wrap pl-2.5 border-l-2 border-purple-500/40">${this.escapeHtml(thinking)}</div>
+          </details>
+        `;
+      }
+    }
+
+    if (text && text.trim()) {
+      html += this.parseMarkdown(text) + '<span class="typing-cursor"></span>';
+    } else if (!thinking || !thinking.trim()) {
+      html += `
+        <div class="flex items-center gap-2.5 py-1 text-zinc-400 animate-fade-in">
+          <div class="typing-indicator">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+          <span class="text-xs text-zinc-400 font-mono animate-pulse">L'IA réfléchit...</span>
+        </div>
+      `;
+    }
+
+    return html;
+  }
+
+  toggleMessageTechDetails(idx) {
+    const el = document.getElementById(`msg-tech-details-${idx}`);
+    if (el) {
+      el.classList.toggle('hidden');
+    }
+  }
+
+  // --- Statistiques de Conversation ---
+
+  computeSessionStats() {
+    const assistantMsgs = (this.messages || []).filter(m => m.role === 'assistant' && m.stats);
+    let totalPromptTokens = 0;
+    let totalEvalTokens = 0;
+    let totalDurationMs = 0;
+    let totalEvalDurationMs = 0;
+    let thinkingCount = 0;
+    const modelsSet = new Set();
+
+    for (const m of assistantMsgs) {
+      if (m.model) modelsSet.add(m.model);
+      if (m.stats) {
+        totalPromptTokens += m.stats.promptTokens || 0;
+        totalEvalTokens += m.stats.evalTokens || 0;
+        totalDurationMs += m.stats.totalDurationMs || 0;
+        totalEvalDurationMs += m.stats.evalDurationMs || 0;
+        if (m.stats.hasThinking || (m.thinking && m.thinking.trim())) {
+          thinkingCount++;
+        }
+      }
+    }
+
+    const totalTokens = totalPromptTokens + totalEvalTokens;
+    const avgTokPerSec = totalEvalDurationMs > 0 ? parseFloat((totalEvalTokens / (totalEvalDurationMs / 1000)).toFixed(1)) : 0;
+
+    return {
+      assistantCount: assistantMsgs.length,
+      userCount: (this.messages || []).filter(m => m.role === 'user').length,
+      totalPromptTokens,
+      totalEvalTokens,
+      totalTokens,
+      totalDurationMs,
+      totalDurationSec: parseFloat((totalDurationMs / 1000).toFixed(1)),
+      avgTokPerSec,
+      thinkingCount,
+      modelsUsed: Array.from(modelsSet)
+    };
+  }
+
+  updateSessionStatsUI() {
+    const stats = this.computeSessionStats();
+
+    if (this.sessionStatsBadge && this.sessionStatsText) {
+      if (stats.totalTokens > 0) {
+        this.sessionStatsBadge.classList.remove('hidden');
+        this.sessionStatsText.textContent = `${stats.totalTokens.toLocaleString('fr-FR')} tok • ${stats.totalDurationSec}s • ${stats.avgTokPerSec} tok/s`;
+      } else {
+        this.sessionStatsBadge.classList.add('hidden');
+      }
+    }
+  }
+
+  openSessionStatsModal() {
+    if (!this.statsModal) return;
+    this.statsModal.classList.remove('hidden');
+    document.documentElement.classList.add('modal-open');
+    document.body.classList.add('modal-open');
+
+    const currentSession = this.sessions.find(s => s.id === this.currentSessionId);
+    const stats = this.computeSessionStats();
+
+    if (this.statsSessionTitle) {
+      this.statsSessionTitle.textContent = currentSession?.title || 'Session active';
+    }
+    if (this.statsTotalTokens) {
+      this.statsTotalTokens.textContent = stats.totalTokens.toLocaleString('fr-FR');
+    }
+    if (this.statsTokensSplit) {
+      this.statsTokensSplit.textContent = `${stats.totalPromptTokens.toLocaleString('fr-FR')} prompt / ${stats.totalEvalTokens.toLocaleString('fr-FR')} réponse`;
+    }
+    if (this.statsTotalTime) {
+      this.statsTotalTime.textContent = `${stats.totalDurationSec}s`;
+    }
+    if (this.statsAvgSpeed) {
+      this.statsAvgSpeed.textContent = `${stats.avgTokPerSec} tok/s`;
+    }
+    if (this.statsMsgCount) {
+      this.statsMsgCount.textContent = `${this.messages.length} (${stats.userCount}Q / ${stats.assistantCount}R)`;
+    }
+    if (this.statsThinkingCount) {
+      this.statsThinkingCount.textContent = `${stats.thinkingCount} réponse(s)`;
+    }
+    if (this.statsModelsUsed) {
+      this.statsModelsUsed.textContent = stats.modelsUsed.join(', ') || (this.selectedModel || 'N/A');
+    }
+
+    if (this.statsMessagesBreakdown) {
+      const assistantMsgs = (this.messages || [])
+        .map((m, i) => ({ ...m, origIndex: i }))
+        .filter(m => m.role === 'assistant' && m.stats);
+
+      if (assistantMsgs.length === 0) {
+        this.statsMessagesBreakdown.innerHTML = `
+          <div class="p-4 text-center text-xs text-zinc-500 rounded-2xl bg-zinc-950/60 border border-zinc-800">
+            Aucune métrique enregistrée dans cette session pour l'instant.
+          </div>
+        `;
+      } else {
+        this.statsMessagesBreakdown.innerHTML = assistantMsgs.map((m, idx) => {
+          const prevUserMsg = this.messages.slice(0, m.origIndex).reverse().find(msg => msg.role === 'user');
+          const promptPreview = prevUserMsg ? (prevUserMsg.displayContent || prevUserMsg.content || '').slice(0, 45) : 'Prompt';
+
+          return `
+            <div
+              onclick="window.ollamaFullWidget.openMessageStatsModal(${m.origIndex})"
+              class="p-3 rounded-2xl bg-zinc-950/70 hover:bg-zinc-900/80 border border-zinc-800/80 hover:border-zinc-700/80 flex items-center justify-between gap-3 text-xs cursor-pointer transition-all group"
+              title="Cliquer pour voir les détails de cette réponse"
+            >
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-zinc-200 text-[11px]">#${idx + 1}</span>
+                  <span class="text-[11px] text-zinc-300 truncate font-medium" title="${this.escapeHtml(promptPreview)}">${this.escapeHtml(promptPreview)}...</span>
+                </div>
+                <div class="text-[10px] font-mono text-zinc-500 mt-0.5">
+                  ${this.escapeHtml(m.model || '')} • ${m.time || ''}
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 font-mono text-[11px] shrink-0">
+                <span class="text-zinc-300 font-medium">${(m.stats.totalDurationMs / 1000).toFixed(1)}s</span>
+                <span class="text-emerald-400 font-bold">${m.stats.tokPerSec} tok/s</span>
+                <span class="px-2 py-0.5 rounded-lg bg-zinc-900 border border-zinc-800 text-indigo-300 text-[10px]">${m.stats.totalTokens} tok</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+  }
+
+  closeSessionStatsModal() {
+    if (!this.statsModal) return;
+    this.statsModal.classList.add('hidden');
+    document.documentElement.classList.remove('modal-open');
+    document.body.classList.remove('modal-open');
+  }
+
+  openMessageStatsModal(idx) {
+    if (!this.msgStatsModal) return;
+    const msg = this.messages[idx];
+    if (!msg) return;
+
+    this.msgStatsModal.classList.remove('hidden');
+    document.documentElement.classList.add('modal-open');
+    document.body.classList.add('modal-open');
+
+    // Trouver le prompt utilisateur correspondant
+    const prevUserMsg = this.messages.slice(0, idx).reverse().find(m => m.role === 'user');
+    const promptText = prevUserMsg ? (prevUserMsg.displayContent || prevUserMsg.content || '') : 'Question';
+
+    if (this.msgModalModel) {
+      this.msgModalModel.textContent = `${msg.model || 'Modèle local'}${msg.time ? ' • ' + msg.time : ''}`;
+    }
+    if (this.msgModalDuration) {
+      this.msgModalDuration.textContent = msg.stats ? `${(msg.stats.totalDurationMs / 1000).toFixed(2)}s` : 'N/A';
+    }
+    if (this.msgModalSpeed) {
+      this.msgModalSpeed.textContent = msg.stats ? `${msg.stats.tokPerSec} tok/s` : 'N/A';
+    }
+    if (this.msgModalTotalTokens) {
+      this.msgModalTotalTokens.textContent = msg.stats ? msg.stats.totalTokens.toLocaleString('fr-FR') : 'N/A';
+    }
+    if (this.msgModalLoad) {
+      this.msgModalLoad.textContent = msg.stats ? `${msg.stats.loadDurationMs} ms` : 'N/A';
+    }
+    if (this.msgModalPrompt) {
+      this.msgModalPrompt.textContent = msg.stats ? `${msg.stats.promptTokens} tok (${msg.stats.promptEvalDurationMs} ms)` : 'N/A';
+    }
+    if (this.msgModalEval) {
+      this.msgModalEval.textContent = msg.stats ? `${msg.stats.evalTokens} tok (${msg.stats.evalDurationMs} ms)` : 'N/A';
+    }
+
+    // Affichage du processus de réflexion complet (Thinking)
+    const thinkingText = (msg.thinking && msg.thinking.trim()) ? msg.thinking.trim() : '';
+    if (this.msgModalThinkingBox && this.msgModalThinkingContent) {
+      if (thinkingText) {
+        this.msgModalThinkingBox.classList.remove('hidden');
+        this.msgModalThinkingContent.textContent = thinkingText;
+        if (this.msgModalThinkingLen) {
+          this.msgModalThinkingLen.textContent = `${thinkingText.length.toLocaleString('fr-FR')} car.`;
+        }
+      } else {
+        this.msgModalThinkingBox.classList.add('hidden');
+      }
+    }
+
+    if (this.msgModalPromptText) {
+      this.msgModalPromptText.textContent = promptText;
+    }
+  }
+
+  closeMessageStatsModal() {
+    if (!this.msgStatsModal) return;
+    this.msgStatsModal.classList.add('hidden');
+    document.documentElement.classList.remove('modal-open');
+    document.body.classList.remove('modal-open');
+  }
+
   setGeneratingState(isGenerating) {
     this.isGenerating = isGenerating;
     if (isGenerating) {
@@ -1679,10 +2572,39 @@ class OllamaFullWidget {
 
   parseMarkdown(text) {
     if (!text) return '';
-    if (typeof marked !== 'undefined') {
-      return marked.parse(text);
+
+    let processedText = text;
+
+    // Support des blocs de réflexion <think>...</think> (modèles DeepSeek R1, reasoning, etc.)
+    if (processedText.includes('<think>')) {
+      if (!processedText.includes('</think>')) {
+        // En cours de réflexion (flux en direct)
+        processedText = processedText.replace(/<think>([\s\S]*)$/i, (match, p1) => {
+          return `\n\n<details class="think-block my-2.5 rounded-2xl bg-purple-950/20 border border-purple-500/20 p-3 text-xs text-zinc-400" open>
+            <summary class="font-mono text-[11px] text-purple-300 font-semibold cursor-pointer flex items-center gap-2 select-none">
+              <span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+              <span>🧠 Réflexion en cours...</span>
+            </summary>
+            <div class="mt-2 text-[11px] text-zinc-300 leading-relaxed font-mono whitespace-pre-wrap pl-2.5 border-l-2 border-purple-500/40">${this.escapeHtml(p1.trim())}</div>
+          </details>\n\n`;
+        });
+      } else {
+        // Réflexion terminée (fermé)
+        processedText = processedText.replace(/<think>([\s\S]*?)<\/think>/gi, (match, p1) => {
+          return `\n\n<details class="think-block my-2.5 rounded-2xl bg-purple-950/15 border border-purple-500/20 p-3 text-xs text-zinc-400">
+            <summary class="font-mono text-[11px] text-purple-300 font-semibold cursor-pointer flex items-center gap-2 select-none hover:text-purple-200 transition-colors">
+              <span>🧠 Processus de réflexion (cliquer pour dérouler)</span>
+            </summary>
+            <div class="mt-2 text-[11px] text-zinc-300 leading-relaxed font-mono whitespace-pre-wrap pl-2.5 border-l-2 border-purple-500/40">${this.escapeHtml(p1.trim())}</div>
+          </details>\n\n`;
+        });
+      }
     }
-    return text.replace(/\n/g, '<br>');
+
+    if (typeof marked !== 'undefined') {
+      return marked.parse(processedText);
+    }
+    return processedText.replace(/\n/g, '<br>');
   }
 
   escapeHtml(str) {
