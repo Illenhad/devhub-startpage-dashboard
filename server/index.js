@@ -25,6 +25,7 @@ import rssRoutes from './routes/rss.js';
 import settingsRoutes from './routes/settings.js';
 import watchRoutes from './routes/watch.js';
 import portsRoutes from './routes/ports.js';
+import projectsRoutes from './routes/projects.js';
 import { startPeriodicCrawler } from './services/watchService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -58,6 +59,7 @@ app.use('/api/rss', rssRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/watch', watchRoutes);
 app.use('/api/ports', portsRoutes);
+app.use('/api/projects', projectsRoutes);
 
 // Démarrer le robot d'exploration de veille en arrière-plan (toutes les 15 minutes)
 startPeriodicCrawler(15);

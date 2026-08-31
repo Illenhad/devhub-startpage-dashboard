@@ -23,6 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
   window.rssFullWidget = new window.RssFullWidget();
   if (window.PortsWidget) window.portsWidget = new window.PortsWidget();
   if (window.PortsFullWidget) window.portsFullWidget = new window.PortsFullWidget();
+  if (window.ProjectsWidget) window.projectsWidget = new window.ProjectsWidget();
+  if (window.ProjectsFullWidget) window.projectsFullWidget = new window.ProjectsFullWidget();
 
   // Gestionnaire de Synchronisation Multi-PC (Turso Cloud)
   if (window.SyncManager) {
@@ -181,9 +183,10 @@ function initTabs() {
     window.location.hash = targetId;
 
     // Déclencher le chargement des données spécifiques
-    if (targetId === 'dashboard' && window.rssWidget) {
-      window.rssWidget.loadUnreadCount();
+    if (targetId === 'dashboard') {
+      if (window.rssWidget) window.rssWidget.loadUnreadCount();
       if (window.portsWidget) window.portsWidget.loadPorts();
+      if (window.projectsWidget) window.projectsWidget.loadProjects();
     } else if (targetId === 'system' && window.systemFullWidget) {
       window.systemFullWidget.initView();
     } else if (targetId === 'docker' && window.dockerFullWidget) {
@@ -192,8 +195,8 @@ function initTabs() {
       window.ollamaFullWidget.initView();
     } else if (targetId === 'rss' && window.rssFullWidget) {
       window.rssFullWidget.initView();
-    } else if (targetId === 'ports' && window.portsFullWidget) {
-      window.portsFullWidget.loadPorts();
+    } else if (targetId === 'projects' && window.projectsFullWidget) {
+      window.projectsFullWidget.loadProjects();
     }
   }
 
@@ -208,7 +211,7 @@ function initTabs() {
   const hash = window.location.hash.replace('#', '');
   const savedTab = hash || localStorage.getItem('devhub_startpage_tab') || localStorage.getItem('mac_startpage_tab') || 'dashboard';
   
-  if (['dashboard', 'system', 'docker', 'ollama', 'rss'].includes(savedTab)) {
+  if (['dashboard', 'system', 'docker', 'ollama', 'rss', 'projects'].includes(savedTab)) {
     switchTab(savedTab);
   } else {
     switchTab('dashboard');

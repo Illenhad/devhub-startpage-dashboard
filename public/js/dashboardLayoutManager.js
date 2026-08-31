@@ -27,8 +27,9 @@ class DashboardLayoutManager {
       { id: 'system', name: 'Système', icon: '💻', size: 1, rowSpan: 1, hidden: false },
       { id: 'docker', name: 'Docker', icon: '🐳', size: 1, rowSpan: 1, hidden: false },
       { id: 'ollama', name: 'AI Studio', icon: '⚡', size: 1, rowSpan: 1, hidden: false },
-      { id: 'rss', name: 'Veille & RSS', icon: '📰', size: 1, rowSpan: 1, hidden: false },
-      { id: 'ports', name: 'Ports & Processus', icon: '🔌', size: 1, rowSpan: 1, hidden: false }
+      { id: 'ports', name: 'Réseau & Sockets', icon: '🔌', size: 1, rowSpan: 1, hidden: false },
+      { id: 'projects', name: 'Projets Git', icon: '📁', size: 1, rowSpan: 1, hidden: false },
+      { id: 'rss', name: 'Veille & RSS', icon: '📰', size: 1, rowSpan: 1, hidden: false }
     ];
 
     this.allColClasses = [
