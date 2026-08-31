@@ -65,6 +65,29 @@ class SyncManager {
       }
     });
 
+    // Détection automatique en direct lors du collage
+    if (this.urlInput) {
+      this.urlInput.addEventListener('input', () => {
+        const val = this.urlInput.value.trim();
+        if (val.startsWith('eyJ')) {
+          if (this.tokenInput) this.tokenInput.value = val;
+          this.urlInput.value = '';
+          this.showError("Le jeton JWT a été détecté et placé dans le champ 'Jeton d'authentification'. Veuillez saisir l'URL de votre base Turso (libsql://...).");
+        }
+      });
+    }
+
+    if (this.tokenInput) {
+      this.tokenInput.addEventListener('input', () => {
+        const val = this.tokenInput.value.trim();
+        if (val.startsWith('libsql://') || val.startsWith('https://') || (val.includes('turso.io') && !val.startsWith('eyJ'))) {
+          if (this.urlInput) this.urlInput.value = val;
+          this.tokenInput.value = '';
+          this.showError("L'URL de la base a été détectée et placée dans le champ 'URL'. Veuillez saisir votre jeton JWT (eyJ...).");
+        }
+      });
+    }
+
     if (this.toggleTokenBtn && this.tokenInput) {
       this.toggleTokenBtn.addEventListener('click', () => {
         const isPassword = this.tokenInput.type === 'password';
@@ -86,6 +109,19 @@ class SyncManager {
         e.preventDefault();
         this.saveConfig();
       });
+    }
+  }
+
+  showError(msg) {
+    if (this.errorBannerEl && this.errorTextEl) {
+      this.errorBannerEl.classList.remove('hidden');
+      this.errorTextEl.textContent = msg;
+    }
+  }
+
+  hideError() {
+    if (this.errorBannerEl) {
+      this.errorBannerEl.classList.add('hidden');
     }
   }
 
@@ -180,10 +216,9 @@ class SyncManager {
     if (this.errorBannerEl && this.errorTextEl) {
       const err = lastSyncError || this.status.error;
       if (err && enabled) {
-        this.errorBannerEl.classList.remove('hidden');
-        this.errorTextEl.textContent = `Erreur : ${err}`;
+        this.showError(`Erreur : ${err}`);
       } else {
-        this.errorBannerEl.classList.add('hidden');
+        this.hideError();
       }
     }
 
@@ -192,8 +227,13 @@ class SyncManager {
       if (this.urlInput) {
         this.urlInput.value = syncUrl && !syncUrl.startsWith('eyJ') ? syncUrl : '';
       }
-      if (this.tokenInput && hasToken && !this.tokenInput.value) {
-        this.tokenInput.placeholder = '•••••••••••••••••••••••••••••••• (Jeton enregistré)';
+      if (this.tokenInput) {
+        if (hasToken) {
+          this.tokenInput.placeholder = '•••••••••••••••••••••••••••••••• (Jeton enregistré)';
+        } else {
+          this.tokenInput.placeholder = 'Collez votre jeton JWT (ex: eyJhbGciOi...)';
+          this.tokenInput.value = '';
+        }
       }
       if (this.enabledInput) {
         this.enabledInput.checked = Boolean(enabled);
@@ -252,18 +292,17 @@ class SyncManager {
       syncUrl = '';
       if (this.tokenInput) this.tokenInput.value = authToken;
       if (this.urlInput) this.urlInput.value = '';
-      if (this.errorBannerEl && this.errorTextEl) {
-        this.errorBannerEl.classList.remove('hidden');
-        this.errorTextEl.textContent = "Le jeton d'authentification a été placé dans le bon champ. Veuillez maintenant renseigner l'URL de votre base Turso (ex: libsql://devhub-xxxx.turso.io).";
-      }
+      this.showError("Le jeton d'authentification a été placé dans le bon champ. Veuillez maintenant renseigner l'URL de votre base Turso (ex: libsql://devhub-xxxx.turso.io).");
       return;
     }
 
     if (enabled && !syncUrl) {
-      if (this.errorBannerEl && this.errorTextEl) {
-        this.errorBannerEl.classList.remove('hidden');
-        this.errorTextEl.textContent = "Veuillez renseigner l'URL de votre base de données Turso (ex: libsql://devhub-xxxx.turso.io).";
-      }
+      this.showError("Veuillez renseigner l'URL de votre base de données Turso (ex: libsql://devhub-xxxx.turso.io).");
+      return;
+    }
+
+    if (enabled && !authToken && (!this.status || !this.status.hasToken)) {
+      this.showError("Veuillez renseigner votre jeton d'authentification Turso (commençant par eyJ...).");
       return;
     }
 

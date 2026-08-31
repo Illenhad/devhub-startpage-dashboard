@@ -190,7 +190,7 @@ export async function initDatabase() {
     const settingsRes = await localClient.execute('SELECT key, value FROM settings WHERE key IN ("turso_sync_url", "turso_auth_token", "turso_sync_enabled")');
     for (const row of settingsRes.rows) {
       if (row.key === 'turso_sync_url' && row.value) syncConfig.syncUrl = String(row.value);
-      if (row.key === 'turso_auth_token' && row.value) syncConfig.authToken = String(row.value);
+      if (row.key === 'turso_auth_token' && row.value && String(row.value).startsWith('eyJ')) syncConfig.authToken = String(row.value);
       if (row.key === 'turso_sync_enabled') syncConfig.enabled = row.value === 'true' || row.value === true || row.value === '1';
     }
   } catch {}
@@ -323,7 +323,7 @@ export function getSyncStatus() {
   return {
     enabled: Boolean(syncConfig.enabled && (syncConfig.syncUrl || isReplicaActive)),
     syncUrl: syncConfig.syncUrl ? syncConfig.syncUrl.replace(/\/\/.*@/, '//***@') : '',
-    hasToken: Boolean(syncConfig.authToken),
+    hasToken: Boolean(syncConfig.authToken && syncConfig.authToken.startsWith('eyJ')),
     lastSyncAt,
     lastSyncStatus,
     lastSyncError,

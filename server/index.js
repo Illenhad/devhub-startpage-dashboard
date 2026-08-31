@@ -24,6 +24,7 @@ import ollamaRoutes from './routes/ollama.js';
 import rssRoutes from './routes/rss.js';
 import settingsRoutes from './routes/settings.js';
 import watchRoutes from './routes/watch.js';
+import portsRoutes from './routes/ports.js';
 import { startPeriodicCrawler } from './services/watchService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -56,6 +57,7 @@ app.use('/api/ollama', ollamaRoutes);
 app.use('/api/rss', rssRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/watch', watchRoutes);
+app.use('/api/ports', portsRoutes);
 
 // Démarrer le robot d'exploration de veille en arrière-plan (toutes les 15 minutes)
 startPeriodicCrawler(15);

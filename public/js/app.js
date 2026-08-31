@@ -21,6 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
   window.ollamaFullWidget = new window.OllamaFullWidget();
   window.rssWidget = new window.RssWidget();
   window.rssFullWidget = new window.RssFullWidget();
+  if (window.PortsWidget) window.portsWidget = new window.PortsWidget();
+  if (window.PortsFullWidget) window.portsFullWidget = new window.PortsFullWidget();
 
   // Gestionnaire de Synchronisation Multi-PC (Turso Cloud)
   if (window.SyncManager) {
@@ -181,6 +183,7 @@ function initTabs() {
     // Déclencher le chargement des données spécifiques
     if (targetId === 'dashboard' && window.rssWidget) {
       window.rssWidget.loadUnreadCount();
+      if (window.portsWidget) window.portsWidget.loadPorts();
     } else if (targetId === 'system' && window.systemFullWidget) {
       window.systemFullWidget.initView();
     } else if (targetId === 'docker' && window.dockerFullWidget) {
@@ -189,6 +192,8 @@ function initTabs() {
       window.ollamaFullWidget.initView();
     } else if (targetId === 'rss' && window.rssFullWidget) {
       window.rssFullWidget.initView();
+    } else if (targetId === 'ports' && window.portsFullWidget) {
+      window.portsFullWidget.loadPorts();
     }
   }
 

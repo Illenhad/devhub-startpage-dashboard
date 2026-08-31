@@ -143,6 +143,9 @@ class SystemFullWidget {
     this.loadProcesses();
     this.loadDisks();
     this.loadHeavyFiles();
+    if (window.portsFullWidget && typeof window.portsFullWidget.loadPorts === 'function') {
+      window.portsFullWidget.loadPorts();
+    }
   }
 
   // 1. RAM Summary
