@@ -14,9 +14,9 @@ const router = Router();
  * GET /api/watch/keywords
  * Liste tous les mots-clés de veille configurés
  */
-router.get('/keywords', (req, res) => {
+router.get('/keywords', async (req, res) => {
   try {
-    const keywords = getWatchKeywords();
+    const keywords = await getWatchKeywords();
     res.json({ keywords });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -27,14 +27,14 @@ router.get('/keywords', (req, res) => {
  * POST /api/watch/keywords
  * Ajoute un nouveau mot-clé de veille
  */
-router.post('/keywords', (req, res) => {
+router.post('/keywords', async (req, res) => {
   try {
     const { keyword, category, icon } = req.body;
     if (!keyword || !keyword.trim()) {
       return res.status(400).json({ error: 'Mot-clé requis' });
     }
 
-    const keywords = addWatchKeyword({ keyword, category, icon });
+    const keywords = await addWatchKeyword({ keyword, category, icon });
     res.json({ success: true, keywords });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -45,9 +45,9 @@ router.post('/keywords', (req, res) => {
  * DELETE /api/watch/keywords/:id
  * Supprime un mot-clé de veille
  */
-router.delete('/keywords/:id', (req, res) => {
+router.delete('/keywords/:id', async (req, res) => {
   try {
-    const keywords = deleteWatchKeyword(req.params.id);
+    const keywords = await deleteWatchKeyword(req.params.id);
     res.json({ success: true, keywords });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -58,9 +58,9 @@ router.delete('/keywords/:id', (req, res) => {
  * POST /api/watch/keywords/reset
  * Réinitialise aux mots-clés de veille par défaut
  */
-router.post('/keywords/reset', (req, res) => {
+router.post('/keywords/reset', async (req, res) => {
   try {
-    const keywords = resetWatchKeywords();
+    const keywords = await resetWatchKeywords();
     res.json({ success: true, keywords });
   } catch (err) {
     res.status(500).json({ error: err.message });

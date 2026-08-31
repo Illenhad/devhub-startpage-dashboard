@@ -308,9 +308,10 @@ export async function fetchKeywordNews(keyword) {
  * Récupère l'ensemble des articles agrégés : Tous les flux RSS suivis + Tous les mots-clés de veille
  */
 export async function getUnifiedNewsFeed() {
-  cleanupOldReadArticles(1);
-  const feeds = getRssFeeds() || [];
-  const keywords = (getWatchKeywords() || []).filter(k => k.enabled);
+  await cleanupOldReadArticles(1);
+  const feeds = (await getRssFeeds()) || [];
+  const allKeywords = (await getWatchKeywords()) || [];
+  const keywords = allKeywords.filter(k => k.enabled);
 
   const fetchPromises = [];
 

@@ -22,6 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
   window.rssWidget = new window.RssWidget();
   window.rssFullWidget = new window.RssFullWidget();
 
+  // Gestionnaire de Synchronisation Multi-PC (Turso Cloud)
+  if (window.SyncManager) {
+    window.syncManager = new window.SyncManager();
+  }
+
   // Gestionnaire d'Agencement de l'Accueil (Drag & Drop, Grille & Visibilité)
   if (window.DashboardLayoutManager) {
     window.dashboardLayoutManager = new window.DashboardLayoutManager();

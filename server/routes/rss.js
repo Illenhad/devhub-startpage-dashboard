@@ -49,9 +49,9 @@ router.get('/defaults', (req, res) => {
  * GET /api/rss/feeds
  * Renvoie la liste de tous les flux suivis enregistrés en SQLite
  */
-router.get('/feeds', (req, res) => {
+router.get('/feeds', async (req, res) => {
   try {
-    const feeds = getRssFeeds();
+    const feeds = await getRssFeeds();
     res.json({ feeds });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -62,12 +62,12 @@ router.get('/feeds', (req, res) => {
  * POST /api/rss/feeds
  * Ajoute un flux personnalisé
  */
-router.post('/feeds', (req, res) => {
+router.post('/feeds', async (req, res) => {
   try {
     const { name, url, category, icon } = req.body;
     if (!url) return res.status(400).json({ error: 'URL du flux requise' });
 
-    const feeds = addRssFeed({ name, url, category, icon });
+    const feeds = await addRssFeed({ name, url, category, icon });
     res.json({ success: true, feeds });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -78,9 +78,9 @@ router.post('/feeds', (req, res) => {
  * DELETE /api/rss/feeds/:id
  * Supprime un flux
  */
-router.delete('/feeds/:id', (req, res) => {
+router.delete('/feeds/:id', async (req, res) => {
   try {
-    const feeds = deleteRssFeed(req.params.id);
+    const feeds = await deleteRssFeed(req.params.id);
     res.json({ success: true, feeds });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -91,9 +91,9 @@ router.delete('/feeds/:id', (req, res) => {
  * POST /api/rss/feeds/reset
  * Réinitialise aux flux par défaut
  */
-router.post('/feeds/reset', (req, res) => {
+router.post('/feeds/reset', async (req, res) => {
   try {
-    const feeds = resetRssFeeds();
+    const feeds = await resetRssFeeds();
     res.json({ success: true, feeds });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -108,9 +108,9 @@ router.post('/feeds/reset', (req, res) => {
  * GET /api/rss/state
  * Renvoie les listes des articles lus et supprimés
  */
-router.get('/state', (req, res) => {
+router.get('/state', async (req, res) => {
   try {
-    const state = getRssArticleState();
+    const state = await getRssArticleState();
     res.json(state);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -121,12 +121,12 @@ router.get('/state', (req, res) => {
  * POST /api/rss/read
  * Marque un article comme lu ou non lu
  */
-router.post('/read', (req, res) => {
+router.post('/read', async (req, res) => {
   try {
     const { link, isRead } = req.body;
     if (!link) return res.status(400).json({ error: 'Lien de l\'article requis' });
 
-    const state = setArticleRead(link, isRead !== false);
+    const state = await setArticleRead(link, isRead !== false);
     res.json({ success: true, state });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -137,12 +137,12 @@ router.post('/read', (req, res) => {
  * POST /api/rss/read-all
  * Marque un ensemble d'articles comme lus
  */
-router.post('/read-all', (req, res) => {
+router.post('/read-all', async (req, res) => {
   try {
     const { links } = req.body;
     if (!Array.isArray(links)) return res.status(400).json({ error: 'Tableau de liens requis' });
 
-    const state = markMultipleArticlesRead(links);
+    const state = await markMultipleArticlesRead(links);
     res.json({ success: true, state });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -153,12 +153,12 @@ router.post('/read-all', (req, res) => {
  * POST /api/rss/delete-article
  * Masque / supprime un article de la liste
  */
-router.post('/delete-article', (req, res) => {
+router.post('/delete-article', async (req, res) => {
   try {
     const { link } = req.body;
     if (!link) return res.status(400).json({ error: 'Lien requis' });
 
-    const state = deleteArticle(link);
+    const state = await deleteArticle(link);
     res.json({ success: true, state });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -169,9 +169,9 @@ router.post('/delete-article', (req, res) => {
  * POST /api/rss/restore-articles
  * Restaure tous les articles masqués
  */
-router.post('/restore-articles', (req, res) => {
+router.post('/restore-articles', async (req, res) => {
   try {
-    const state = restoreAllDeletedArticles();
+    const state = await restoreAllDeletedArticles();
     res.json({ success: true, state });
   } catch (err) {
     res.status(500).json({ error: err.message });
