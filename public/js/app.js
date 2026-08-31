@@ -30,8 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Gestion des Onglets Pleine Page
   initTabs();
 
-  // Gestion des Sections Repliables / Dépliables
-  initCollapsibles();
+  // Nettoyage et suppression des états de repli
+  cleanupCollapsibles();
 });
 
 function initClock() {
@@ -206,43 +206,19 @@ function initTabs() {
 }
 
 /**
- * Gestionnaire des sections repliables / dépliables
+ * Nettoyage et suppression définitive des fonctionnalités de repli / réduction
  */
-function initCollapsibles() {
-  const toggleButtons = document.querySelectorAll('[data-collapse-toggle]');
-
-  toggleButtons.forEach(btn => {
-    const targetId = btn.getAttribute('data-collapse-toggle');
-    const content = document.getElementById(targetId);
-    const chevron = btn.querySelector('.collapse-chevron');
-    if (!content) return;
-
-    // Restaurer l'état sauvegardé
-    const isCollapsed = (localStorage.getItem(`devhub_startpage_collapse_${targetId}`) || localStorage.getItem(`mac_startpage_collapse_${targetId}`)) === 'true';
-    if (isCollapsed) {
-      content.classList.add('hidden');
-      if (chevron) {
-        chevron.classList.add('rotate-180');
-      }
-    }
-
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const currentlyHidden = content.classList.contains('hidden');
-
-      if (currentlyHidden) {
-        content.classList.remove('hidden');
-        if (chevron) {
-          chevron.classList.remove('rotate-180');
-        }
-        localStorage.setItem(`devhub_startpage_collapse_${targetId}`, 'false');
-      } else {
-        content.classList.add('hidden');
-        if (chevron) {
-          chevron.classList.add('rotate-180');
-        }
-        localStorage.setItem(`devhub_startpage_collapse_${targetId}`, 'true');
-      }
-    });
+function cleanupCollapsibles() {
+  const allIds = [
+    'dash-sys-content', 'dash-docker-content', 'dash-ollama-content', 'dash-rss-content',
+    'full-ram-content', 'full-disks-content', 'full-procs-content', 'full-heavy-content'
+  ];
+  allIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('hidden');
+    try {
+      localStorage.removeItem(`devhub_startpage_collapse_${id}`);
+      localStorage.removeItem(`mac_startpage_collapse_${id}`);
+    } catch {}
   });
 }

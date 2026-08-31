@@ -166,7 +166,7 @@ class RssStore {
 
   getActiveMasterArticles() {
     return (this.masterArticles || [])
-      .filter(a => a && a.link && !this.deletedArticles.has(a.link))
+      .filter(a => a && a.link)
       .sort((a, b) => this.getArticleTimestamp(b) - this.getArticleTimestamp(a));
   }
 
@@ -189,7 +189,7 @@ class RssStore {
       const kw = (a.watchKeyword || '').toLowerCase().trim();
       return kw === clean || (a.type === 'watch' && kw.includes(clean));
     });
-    return items.filter(a => !this.deletedArticles.has(a.link) && !this.readArticles.has(a.link)).length;
+    return items.filter(a => !this.readArticles.has(a.link)).length;
   }
 
   getUnreadCountForFeed(feed) {
@@ -205,7 +205,7 @@ class RssStore {
       return false;
     });
 
-    return items.filter(a => !this.deletedArticles.has(a.link) && !this.readArticles.has(a.link)).length;
+    return items.filter(a => !this.readArticles.has(a.link)).length;
   }
 
   // --- Mutations d'état et Persistance ---
@@ -243,28 +243,6 @@ class RssStore {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ links })
     }).catch(e => console.warn('Erreur markMultipleArticlesRead serveur:', e));
-  }
-
-  deleteArticle(link) {
-    if (!link) return;
-    this.deletedArticles.add(link);
-    localStorage.setItem('devhub_rss_deleted_articles', JSON.stringify([...this.deletedArticles]));
-    this.notify();
-
-    fetch('/api/rss/delete-article', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ link })
-    }).catch(e => console.warn('Erreur deleteArticle serveur:', e));
-  }
-
-  restoreDeletedArticles() {
-    this.deletedArticles.clear();
-    localStorage.setItem('devhub_rss_deleted_articles', JSON.stringify([]));
-    this.notify();
-
-    fetch('/api/rss/restore-articles', { method: 'POST' })
-      .catch(e => console.warn('Erreur restoreDeletedArticles serveur:', e));
   }
 
   async addFeed(name, url) {

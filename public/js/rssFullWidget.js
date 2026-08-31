@@ -36,8 +36,6 @@ class RssFullWidget {
     this.searchInput = document.getElementById('full-rss-search');
     this.refreshBtn = document.getElementById('full-rss-refresh-btn');
     this.markAllReadBtn = document.getElementById('full-rss-mark-all-read-btn');
-    this.restoreDeletedBtn = document.getElementById('full-rss-restore-deleted-btn');
-    this.restoreTextEl = document.getElementById('full-rss-restore-text');
 
     // Modal de lecture complète
     this.readerModalEl = document.getElementById('rss-reader-modal');
@@ -83,11 +81,6 @@ class RssFullWidget {
     // Tout marquer comme lu
     if (this.markAllReadBtn) {
       this.markAllReadBtn.addEventListener('click', () => this.markAllAsRead());
-    }
-
-    // Restaurer les articles supprimés
-    if (this.restoreDeletedBtn) {
-      this.restoreDeletedBtn.addEventListener('click', () => this.restoreDeletedArticles());
     }
 
     // Filtres d'état (Tous / Non lus / Lus)
@@ -614,21 +607,7 @@ class RssFullWidget {
   renderArticles() {
     if (!this.articlesGridEl) return;
 
-    // Filtrer les articles non supprimés
-    let activeList = this.articles.filter(a => !this.deletedArticles.has(a.link));
-
-    // Mettre à jour le bouton de restauration des articles masqués
-    if (this.restoreDeletedBtn) {
-      const deletedCount = this.articles.filter(a => this.deletedArticles.has(a.link)).length;
-      if (deletedCount > 0) {
-        this.restoreDeletedBtn.classList.remove('hidden');
-        if (this.restoreTextEl) {
-          this.restoreTextEl.textContent = `Restaurer ${deletedCount} masqué${deletedCount > 1 ? 's' : ''}`;
-        }
-      } else {
-        this.restoreDeletedBtn.classList.add('hidden');
-      }
-    }
+    let activeList = this.articles;
 
     // Filtrer par état de lecture (tous, non lus, lus)
     let filtered = activeList.filter(a => {
@@ -778,14 +757,6 @@ class RssFullWidget {
                   <span class="text-[10px]">Lu</span>
                 `}
               </button>
-
-              <button
-                onclick="window.rssFullWidget.deleteArticle(decodeURIComponent('${escapedLink}'), event)"
-                class="p-1.5 rounded-xl text-zinc-500 hover:text-rose-400 hover:bg-zinc-800 transition-all"
-                title="Supprimer cet article de la liste"
-              >
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-              </button>
             </div>
 
             <!-- Bouton Principal : Lire l'article -->
@@ -807,7 +778,7 @@ class RssFullWidget {
   }
 
   // -------------------------------------------------------------
-  // ACTIONS SUR LES ARTICLES (LU, NON LU, SUPPRESSION)
+  // ACTIONS SUR LES ARTICLES (LU, NON LU)
   // -------------------------------------------------------------
 
   toggleRead(link, e) {
@@ -823,17 +794,6 @@ class RssFullWidget {
     const unread = active.filter(a => !this.readArticles.has(a.link));
     const links = unread.map(a => a.link);
     window.rssStore.markMultipleArticlesRead(links);
-  }
-
-  deleteArticle(link, e) {
-    if (e) e.stopPropagation();
-    if (!link || !window.rssStore) return;
-    window.rssStore.deleteArticle(link);
-  }
-
-  restoreDeletedArticles() {
-    if (!window.rssStore) return;
-    window.rssStore.restoreDeletedArticles();
   }
 
   // -------------------------------------------------------------
