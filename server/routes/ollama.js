@@ -7,10 +7,29 @@ import {
   getCuratedModelLibrary,
   fetchOllamaOnlineLibrary,
   streamOllamaPull,
-  deleteOllamaModel
+  deleteOllamaModel,
+  manageOllamaService
 } from '../services/ollamaService.js';
 
 const router = Router();
+
+/**
+ * POST /api/ollama/service
+ * Démarre ou éteint l'application/service Ollama
+ */
+router.post('/service', async (req, res) => {
+  const { action } = req.body;
+  if (!action || !['start', 'stop'].includes(action)) {
+    return res.status(400).json({ error: 'Action invalide. Utilisez "start" ou "stop".' });
+  }
+
+  try {
+    const result = await manageOllamaService(action);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 /**
  * GET /api/ollama/status

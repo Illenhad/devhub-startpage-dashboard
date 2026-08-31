@@ -441,6 +441,13 @@
                   --
                 </span>
                 <button
+                  id="docker-power-btn"
+                  class="p-1 rounded-lg text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800 transition-colors cursor-pointer"
+                  title="Démarrer / Éteindre Docker"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 0M12 2v10"/></svg>
+                </button>
+                <button
                   id="docker-refresh-btn"
                   class="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
                   title="Actualiser"
@@ -477,6 +484,23 @@
                     <span class="text-[9px] text-zinc-400 truncate">Vérification...</span>
                   </div>
                 </div>
+              </div>
+
+              <div class="flex items-center gap-1">
+                <button
+                  id="ollama-power-btn"
+                  class="p-1 rounded-lg text-zinc-400 hover:text-purple-400 hover:bg-zinc-800 transition-colors cursor-pointer"
+                  title="Démarrer / Éteindre Ollama"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 0M12 2v10"/></svg>
+                </button>
+                <button
+                  id="ollama-refresh-btn"
+                  class="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+                  title="Actualiser"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                </button>
               </div>
             </div>
 
@@ -852,6 +876,16 @@
                 </button>
               </div>
 
+              <!-- Bouton Marche / Arrêt Service Docker -->
+              <button
+                id="full-docker-power-btn"
+                class="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Démarrer ou éteindre le service Docker"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 0M12 2v10"/></svg>
+                <span id="full-docker-power-text">Service</span>
+              </button>
+
               <!-- Nettoyer conteneurs arrêtés (Prune) -->
               <button
                 id="full-docker-prune-btn"
@@ -955,6 +989,16 @@
                     </div>
                   </div>
                 </div>
+
+                <!-- Bouton Marche / Arrêt Service Ollama -->
+                <button
+                  id="full-ollama-power-btn"
+                  class="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="Démarrer ou éteindre le service Ollama"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 0M12 2v10"/></svg>
+                  <span id="full-ollama-power-text">Service</span>
+                </button>
               </div>
 
               <!-- Sélecteur de Modèle -->

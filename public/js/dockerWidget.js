@@ -1,13 +1,18 @@
 /**
- * Widget Synthèse Docker pour l'Accueil (Affiche uniquement les compteurs et l'état)
+ * Widget Synthèse Docker pour l'Accueil (Affiche les compteurs, l'état et le contrôle du service)
  */
 
 class DockerWidget {
   constructor() {
     this.statusBadgeEl = document.getElementById('docker-status-badge');
     this.countBadgeEl = document.getElementById('docker-count-badge');
+    this.powerBtn = document.getElementById('docker-power-btn');
     this.refreshBtn = document.getElementById('docker-refresh-btn');
     this.summaryContainerEl = document.getElementById('dash-docker-content');
+
+    this.isRunning = false;
+    this.isToggling = false;
+    this.pollInterval = null;
 
     this.bindEvents();
     this.loadContainers();
@@ -15,8 +20,86 @@ class DockerWidget {
 
   bindEvents() {
     if (this.refreshBtn) {
-      this.refreshBtn.addEventListener('click', () => this.loadContainers(true));
+      this.refreshBtn.addEventListener('click', (e) => {
+        if (e) e.stopPropagation();
+        this.loadContainers(true);
+      });
     }
+    if (this.powerBtn) {
+      this.powerBtn.addEventListener('click', (e) => {
+        if (e) e.stopPropagation();
+        this.toggleService();
+      });
+    }
+  }
+
+  async toggleService() {
+    if (this.isToggling) return;
+    this.isToggling = true;
+
+    const action = this.isRunning ? 'stop' : 'start';
+    const actionLabel = action === 'start' ? 'Démarrage...' : 'Arrêt...';
+
+    if (this.statusBadgeEl) {
+      this.statusBadgeEl.innerHTML = `
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+        <span class="text-[10px] font-semibold text-amber-400">${actionLabel}</span>
+      `;
+    }
+
+    if (this.powerBtn) {
+      this.powerBtn.classList.add('opacity-50', 'pointer-events-none');
+    }
+
+    try {
+      const res = await fetch('/api/docker/service', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur service');
+
+      // Polling de transition (vérifie toutes les 2s jusqu'à 50s pour Docker)
+      this.startPollingTransition(action === 'start');
+    } catch (err) {
+      console.error('Erreur bascule service Docker:', err);
+      this.isToggling = false;
+      if (this.powerBtn) this.powerBtn.classList.remove('opacity-50', 'pointer-events-none');
+      this.loadContainers();
+    }
+  }
+
+  startPollingTransition(targetRunning) {
+    if (this.pollInterval) clearInterval(this.pollInterval);
+
+    let attempts = 0;
+    const maxAttempts = 25; // Jusqu'à 50s pour laisser le temps à Docker Desktop de booter sa VM
+
+    this.pollInterval = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch('/api/docker');
+        const data = await res.json();
+
+        if (data.isRunning === targetRunning || attempts >= maxAttempts) {
+          clearInterval(this.pollInterval);
+          this.pollInterval = null;
+          this.isToggling = false;
+          if (this.powerBtn) this.powerBtn.classList.remove('opacity-50', 'pointer-events-none');
+          this.render(data);
+          if (window.dockerFullWidget) window.dockerFullWidget.loadContainers();
+        }
+      } catch {
+        if (attempts >= maxAttempts) {
+          clearInterval(this.pollInterval);
+          this.pollInterval = null;
+          this.isToggling = false;
+          if (this.powerBtn) this.powerBtn.classList.remove('opacity-50', 'pointer-events-none');
+          this.loadContainers();
+        }
+      }
+    }, 2000);
   }
 
   async loadContainers(isManual = false) {
@@ -39,10 +122,17 @@ class DockerWidget {
 
   render(data) {
     const { isRunning, count, message } = data;
+    this.isRunning = Boolean(isRunning);
 
-    if (!isRunning) {
+    if (!this.isRunning) {
       this.renderOffline(message);
       return;
+    }
+
+    // Mise à jour du bouton d'alimentation
+    if (this.powerBtn) {
+      this.powerBtn.title = 'Éteindre le service Docker';
+      this.powerBtn.className = 'p-1 rounded-lg text-emerald-400 hover:text-rose-400 hover:bg-zinc-800 transition-colors cursor-pointer';
     }
 
     // Statut Actif
@@ -104,6 +194,13 @@ class DockerWidget {
   }
 
   renderOffline(message) {
+    this.isRunning = false;
+
+    if (this.powerBtn) {
+      this.powerBtn.title = 'Démarrer le service Docker';
+      this.powerBtn.className = 'p-1 rounded-lg text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800 transition-colors cursor-pointer';
+    }
+
     if (this.statusBadgeEl) {
       this.statusBadgeEl.innerHTML = `
         <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
@@ -115,15 +212,24 @@ class DockerWidget {
     }
     if (this.summaryContainerEl) {
       this.summaryContainerEl.innerHTML = `
-        <div class="py-4 px-3 text-center rounded-2xl bg-zinc-900/40 border border-zinc-800/60 space-y-2">
+        <div class="py-4 px-3 text-center rounded-2xl bg-zinc-900/40 border border-zinc-800/60 space-y-2.5">
           <p class="text-xs font-bold text-zinc-300">Docker non démarré</p>
           <p class="text-[10px] text-zinc-500">Lancez Docker Desktop pour vos conteneurs.</p>
-          <button
-            onclick="window.dockerWidget.loadContainers(true)"
-            class="px-2.5 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-[10px] font-semibold text-zinc-200 transition-all"
-          >
-            Réessayer
-          </button>
+          <div class="flex items-center justify-center gap-2 pt-1">
+            <button
+              onclick="window.dockerWidget.toggleService()"
+              class="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 0M12 2v10"/></svg>
+              <span>Démarrer Docker</span>
+            </button>
+            <button
+              onclick="window.dockerWidget.loadContainers(true)"
+              class="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-[11px] font-semibold text-zinc-300 transition-all cursor-pointer"
+            >
+              Actualiser
+            </button>
+          </div>
         </div>
       `;
     }

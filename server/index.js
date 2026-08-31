@@ -2,6 +2,22 @@ import express from 'express';
 import cors from 'cors';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+// Garantir l'accès aux commandes globales (Docker, Ollama, brew, etc.) sous tous les gestionnaires de service (LaunchAgent, systemd)
+const extraPaths = [
+  '/usr/local/bin',
+  '/usr/local/sbin',
+  '/opt/homebrew/bin',
+  '/opt/homebrew/sbin',
+  `${process.env.HOME || ''}/.docker/bin`,
+  '/usr/bin',
+  '/bin',
+  '/usr/sbin',
+  '/sbin'
+];
+const currentPath = process.env.PATH || '';
+process.env.PATH = Array.from(new Set([...extraPaths, ...currentPath.split(':')])).filter(Boolean).join(':');
+
 import systemRoutes from './routes/system.js';
 import dockerRoutes from './routes/docker.js';
 import ollamaRoutes from './routes/ollama.js';

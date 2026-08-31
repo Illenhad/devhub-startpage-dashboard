@@ -186,3 +186,64 @@ export async function pruneContainers() {
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Démarre ou éteint l'application/service Docker
+ * Supporte macOS (Docker Desktop via open / osascript / killall), Windows (PowerShell / taskkill) et Linux (systemctl)
+ */
+export async function manageDockerService(action) {
+  if (action !== 'start' && action !== 'stop') {
+    throw new Error(`Action de service non supportée: ${action}`);
+  }
+
+  const isMac = process.platform === 'darwin';
+  const isWindows = process.platform === 'win32';
+
+  if (action === 'start') {
+    if (isMac) {
+      try {
+        await execAsync('open -a Docker || open -a "Docker Desktop" || open /Applications/Docker.app');
+        return { success: true, message: 'Démarrage de Docker Desktop initié...' };
+      } catch (err) {
+        throw new Error(`Échec du lancement de Docker Desktop: ${err.message}`);
+      }
+    } else if (isWindows) {
+      try {
+        await execAsync('powershell -NoProfile -Command "if (Test-Path \'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe\') { Start-Process \'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe\' } else { Start-Process \'Docker Desktop\' }"');
+        return { success: true, message: 'Démarrage de Docker Desktop initié...' };
+      } catch (err) {
+        throw new Error(`Échec du lancement de Docker Desktop sur Windows: ${err.message}`);
+      }
+    } else {
+      try {
+        await execAsync('systemctl start docker || service docker start');
+        return { success: true, message: 'Service Docker démarré' };
+      } catch (err) {
+        throw new Error(`Échec du démarrage de Docker: ${err.message}`);
+      }
+    }
+  } else if (action === 'stop') {
+    if (isMac) {
+      try {
+        await execAsync('osascript -e \'quit app "Docker"\' -e \'quit app "Docker Desktop"\' 2>/dev/null; pkill -9 -i -f "docker desktop" 2>/dev/null; pkill -9 -i -f "com.docker" 2>/dev/null; killall -9 Docker "Docker Desktop" com.docker.backend 2>/dev/null || true');
+        return { success: true, message: 'Fermeture de Docker Desktop en cours...' };
+      } catch (err) {
+        throw new Error(`Échec de la fermeture de Docker Desktop: ${err.message}`);
+      }
+    } else if (isWindows) {
+      try {
+        await execAsync('powershell -NoProfile -Command "Stop-Process -Name \'Docker Desktop\', \'com.docker.backend\', \'dockerd\' -Force -ErrorAction SilentlyContinue"');
+        return { success: true, message: 'Fermeture de Docker Desktop en cours...' };
+      } catch (err) {
+        throw new Error(`Échec de la fermeture de Docker Desktop sur Windows: ${err.message}`);
+      }
+    } else {
+      try {
+        await execAsync('systemctl stop docker || service docker stop');
+        return { success: true, message: 'Service Docker arrêté' };
+      } catch (err) {
+        throw new Error(`Échec de l’arrêt de Docker: ${err.message}`);
+      }
+    }
+  }
+}

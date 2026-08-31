@@ -1,16 +1,112 @@
 /**
- * Widget Synthèse Ollama AI pour la page d'accueil (Affiche uniquement le statut et l'accès au Studio)
+ * Widget Synthèse Ollama AI pour la page d'accueil (Affiche le statut, le modèle actif et le contrôle du service)
  */
 
 class OllamaWidget {
   constructor() {
     this.statusBadgeEl = document.getElementById('ollama-status-badge');
+    this.powerBtn = document.getElementById('ollama-power-btn');
+    this.refreshBtn = document.getElementById('ollama-refresh-btn');
     this.summaryContainerEl = document.getElementById('dash-ollama-content');
 
+    this.isRunning = false;
+    this.isToggling = false;
+    this.pollInterval = null;
+
+    this.bindEvents();
     this.checkStatus();
   }
 
-  async checkStatus() {
+  bindEvents() {
+    if (this.powerBtn) {
+      this.powerBtn.addEventListener('click', (e) => {
+        if (e) e.stopPropagation();
+        this.toggleService();
+      });
+    }
+    if (this.refreshBtn) {
+      this.refreshBtn.addEventListener('click', (e) => {
+        if (e) e.stopPropagation();
+        this.checkStatus(true);
+      });
+    }
+  }
+
+  async toggleService() {
+    if (this.isToggling) return;
+    this.isToggling = true;
+
+    const action = this.isRunning ? 'stop' : 'start';
+    const actionLabel = action === 'start' ? 'Démarrage...' : 'Arrêt...';
+
+    if (this.statusBadgeEl) {
+      this.statusBadgeEl.innerHTML = `
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+        <span class="text-[10px] font-semibold text-amber-400">${actionLabel}</span>
+      `;
+    }
+
+    if (this.powerBtn) {
+      this.powerBtn.classList.add('opacity-50', 'pointer-events-none');
+    }
+
+    try {
+      const res = await fetch('/api/ollama/service', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur service');
+
+      this.startPollingTransition(action === 'start');
+    } catch (err) {
+      console.error('Erreur bascule service Ollama:', err);
+      this.isToggling = false;
+      if (this.powerBtn) this.powerBtn.classList.remove('opacity-50', 'pointer-events-none');
+      this.checkStatus();
+    }
+  }
+
+  startPollingTransition(targetRunning) {
+    if (this.pollInterval) clearInterval(this.pollInterval);
+
+    let attempts = 0;
+    const maxAttempts = 15;
+
+    this.pollInterval = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch('/api/ollama/status');
+        const data = await res.json();
+
+        if (data.isRunning === targetRunning || attempts >= maxAttempts) {
+          clearInterval(this.pollInterval);
+          this.pollInterval = null;
+          this.isToggling = false;
+          if (this.powerBtn) this.powerBtn.classList.remove('opacity-50', 'pointer-events-none');
+          this.render(data);
+          if (window.ollamaFullWidget) window.ollamaFullWidget.checkStatus();
+        }
+      } catch {
+        if (attempts >= maxAttempts) {
+          clearInterval(this.pollInterval);
+          this.pollInterval = null;
+          this.isToggling = false;
+          if (this.powerBtn) this.powerBtn.classList.remove('opacity-50', 'pointer-events-none');
+          this.checkStatus();
+        }
+      }
+    }, 1500);
+  }
+
+  async checkStatus(isManual = false) {
+    if (isManual && this.refreshBtn) {
+      const icon = this.refreshBtn.querySelector('svg') || this.refreshBtn;
+      icon.classList.add('animate-spin');
+      setTimeout(() => icon.classList.remove('animate-spin'), 600);
+    }
+
     try {
       const res = await fetch('/api/ollama/status');
       const data = await res.json();
@@ -22,10 +118,16 @@ class OllamaWidget {
 
   render(data) {
     const { isRunning, models, defaultModel } = data;
+    this.isRunning = Boolean(isRunning);
 
-    if (!isRunning) {
+    if (!this.isRunning) {
       this.renderOffline();
       return;
+    }
+
+    if (this.powerBtn) {
+      this.powerBtn.title = 'Éteindre le service Ollama';
+      this.powerBtn.className = 'p-1 rounded-lg text-purple-400 hover:text-rose-400 hover:bg-zinc-800 transition-colors cursor-pointer';
     }
 
     // Statut Actif
@@ -82,6 +184,13 @@ class OllamaWidget {
   }
 
   renderOffline() {
+    this.isRunning = false;
+
+    if (this.powerBtn) {
+      this.powerBtn.title = 'Démarrer le service Ollama';
+      this.powerBtn.className = 'p-1 rounded-lg text-zinc-400 hover:text-purple-400 hover:bg-zinc-800 transition-colors cursor-pointer';
+    }
+
     if (this.statusBadgeEl) {
       this.statusBadgeEl.innerHTML = `
         <span class="w-1.5 h-1.5 rounded-full bg-zinc-600"></span>
@@ -91,15 +200,24 @@ class OllamaWidget {
 
     if (this.summaryContainerEl) {
       this.summaryContainerEl.innerHTML = `
-        <div class="py-4 px-3 text-center rounded-2xl bg-zinc-900/40 border border-zinc-800/60 space-y-2">
+        <div class="py-4 px-3 text-center rounded-2xl bg-zinc-900/40 border border-zinc-800/60 space-y-2.5">
           <p class="text-xs font-bold text-zinc-300">Ollama non démarré</p>
-          <p class="text-[10px] text-zinc-500">Lancez <code class="font-mono text-indigo-400">ollama serve</code> dans le terminal.</p>
-          <button
-            onclick="window.ollamaWidget.checkStatus()"
-            class="px-2.5 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-[10px] font-semibold text-zinc-300 hover:text-white transition-all"
-          >
-            Réessayer
-          </button>
+          <p class="text-[10px] text-zinc-500">Démarrez le moteur IA pour interagir avec vos modèles locaux.</p>
+          <div class="flex items-center justify-center gap-2 pt-1">
+            <button
+              onclick="window.ollamaWidget.toggleService()"
+              class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 0M12 2v10"/></svg>
+              <span>Démarrer Ollama</span>
+            </button>
+            <button
+              onclick="window.ollamaWidget.checkStatus(true)"
+              class="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-[11px] font-semibold text-zinc-300 transition-all cursor-pointer"
+            >
+              Actualiser
+            </button>
+          </div>
         </div>
       `;
     }

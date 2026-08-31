@@ -14,10 +14,16 @@ class DockerFullWidget {
     // Éléments DOM
     this.statusBadgeEl = document.getElementById('full-docker-status-badge');
     this.countBadgeEl = document.getElementById('full-docker-count-badge');
+    this.powerBtn = document.getElementById('full-docker-power-btn');
+    this.powerTextEl = document.getElementById('full-docker-power-text');
     this.containersGridEl = document.getElementById('full-docker-containers-grid');
     this.searchInput = document.getElementById('full-docker-search');
     this.refreshBtn = document.getElementById('full-docker-refresh-btn');
     this.pruneBtn = document.getElementById('full-docker-prune-btn');
+
+    this.isRunning = false;
+    this.isToggling = false;
+    this.pollInterval = null;
     
     // Modal Logs
     this.logModalEl = document.getElementById('docker-log-modal');
@@ -32,8 +38,18 @@ class DockerFullWidget {
   }
 
   bindEvents() {
+    if (this.powerBtn) {
+      this.powerBtn.addEventListener('click', (e) => {
+        if (e) e.stopPropagation();
+        this.toggleService();
+      });
+    }
+
     if (this.refreshBtn) {
-      this.refreshBtn.addEventListener('click', () => this.loadContainers(true));
+      this.refreshBtn.addEventListener('click', (e) => {
+        if (e) e.stopPropagation();
+        this.loadContainers(true);
+      });
     }
 
     if (this.searchInput) {
@@ -129,11 +145,83 @@ class DockerFullWidget {
     }
   }
 
-  updateHeaderStats(data) {
-    const { isRunning, count } = data;
+  async toggleService() {
+    if (this.isToggling) return;
+    this.isToggling = true;
+
+    const action = this.isRunning ? 'stop' : 'start';
+    const actionLabel = action === 'start' ? 'Démarrage...' : 'Arrêt...';
 
     if (this.statusBadgeEl) {
-      if (isRunning) {
+      this.statusBadgeEl.innerHTML = `
+        <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+        <span class="text-xs font-semibold text-amber-400">${actionLabel}</span>
+      `;
+    }
+
+    if (this.powerBtn) {
+      this.powerBtn.classList.add('opacity-50', 'pointer-events-none');
+      if (this.powerTextEl) this.powerTextEl.textContent = actionLabel;
+    }
+
+    try {
+      const res = await fetch('/api/docker/service', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur service');
+
+      this.startPollingTransition(action === 'start');
+    } catch (err) {
+      console.error('Erreur bascule service Docker:', err);
+      this.isToggling = false;
+      if (this.powerBtn) this.powerBtn.classList.remove('opacity-50', 'pointer-events-none');
+      this.loadContainers();
+    }
+  }
+
+  startPollingTransition(targetRunning) {
+    if (this.pollInterval) clearInterval(this.pollInterval);
+
+    let attempts = 0;
+    const maxAttempts = 25; // Jusqu'à 50s pour Docker Desktop
+
+    this.pollInterval = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch('/api/docker');
+        const data = await res.json();
+
+        if (data.isRunning === targetRunning || attempts >= maxAttempts) {
+          clearInterval(this.pollInterval);
+          this.pollInterval = null;
+          this.isToggling = false;
+          if (this.powerBtn) this.powerBtn.classList.remove('opacity-50', 'pointer-events-none');
+          this.containers = data.containers || [];
+          this.updateHeaderStats(data);
+          this.render();
+          if (window.dockerWidget) window.dockerWidget.loadContainers();
+        }
+      } catch {
+        if (attempts >= maxAttempts) {
+          clearInterval(this.pollInterval);
+          this.pollInterval = null;
+          this.isToggling = false;
+          if (this.powerBtn) this.powerBtn.classList.remove('opacity-50', 'pointer-events-none');
+          this.loadContainers();
+        }
+      }
+    }, 2000);
+  }
+
+  updateHeaderStats(data) {
+    const { isRunning, count } = data;
+    this.isRunning = Boolean(isRunning);
+
+    if (this.statusBadgeEl) {
+      if (this.isRunning) {
         this.statusBadgeEl.innerHTML = `
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span class="text-xs font-semibold text-emerald-400">Docker En Ligne</span>
@@ -146,6 +234,18 @@ class DockerFullWidget {
       }
     }
 
+    if (this.powerBtn && this.powerTextEl) {
+      if (this.isRunning) {
+        this.powerTextEl.textContent = 'Éteindre Docker';
+        this.powerBtn.title = 'Arrêter le service Docker Desktop';
+        this.powerBtn.className = 'px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-rose-400 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm';
+      } else {
+        this.powerTextEl.textContent = 'Démarrer Docker';
+        this.powerBtn.title = 'Lancer Docker Desktop';
+        this.powerBtn.className = 'px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 border border-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md';
+      }
+    }
+
     if (this.countBadgeEl && count) {
       this.countBadgeEl.textContent = `${count.running} actif${count.running > 1 ? 's' : ''} / ${count.total} total`;
     }
@@ -153,6 +253,30 @@ class DockerFullWidget {
 
   render() {
     if (!this.containersGridEl) return;
+
+    if (!this.isRunning) {
+      this.containersGridEl.innerHTML = `
+        <div class="col-span-full py-16 text-center text-zinc-500 space-y-3">
+          <div class="inline-flex p-3.5 rounded-3xl bg-zinc-900 text-rose-400 border border-zinc-800">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          </div>
+          <div class="space-y-1">
+            <p class="text-sm font-bold text-zinc-200">Le démon Docker est actuellement inactif</p>
+            <p class="text-xs text-zinc-500 max-w-sm mx-auto">Lancez Docker Desktop pour démarrer et administrer vos conteneurs.</p>
+          </div>
+          <div class="pt-2">
+            <button
+              onclick="window.dockerFullWidget.toggleService()"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-500/10 cursor-pointer"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 0M12 2v10"/></svg>
+              <span>Démarrer Docker Desktop</span>
+            </button>
+          </div>
+        </div>
+      `;
+      return;
+    }
 
     let filtered = this.containers.filter(c => {
       // Filtre statut

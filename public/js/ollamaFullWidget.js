@@ -82,6 +82,12 @@ class OllamaFullWidget {
     this.modelSelect = document.getElementById('full-ollama-model');
     this.modelDetailsBadge = document.getElementById('full-ollama-model-details');
     this.statusBadge = document.getElementById('full-ollama-status-badge');
+    this.powerBtn = document.getElementById('full-ollama-power-btn');
+    this.powerTextEl = document.getElementById('full-ollama-power-text');
+
+    this.isRunning = false;
+    this.isToggling = false;
+    this.pollInterval = null;
 
     // Éléments DOM Personas & System Prompt
     this.personaSelect = document.getElementById('full-ollama-persona');
@@ -781,6 +787,14 @@ class OllamaFullWidget {
   // --- Événements & Binding ---
 
   bindEvents() {
+    // Bouton Alimentation Service Ollama
+    if (this.powerBtn) {
+      this.powerBtn.addEventListener('click', (e) => {
+        if (e) e.stopPropagation();
+        this.toggleService();
+      });
+    }
+
     // Changement de modèle
     if (this.modelSelect) {
       this.modelSelect.addEventListener('change', (e) => {
@@ -1028,12 +1042,98 @@ class OllamaFullWidget {
     }
   }
 
+  async toggleService() {
+    if (this.isToggling) return;
+    this.isToggling = true;
+
+    const action = this.isRunning ? 'stop' : 'start';
+    const actionLabel = action === 'start' ? 'Démarrage...' : 'Arrêt...';
+
+    if (this.statusBadge) {
+      this.statusBadge.innerHTML = `
+        <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+        <span class="text-[11px] text-amber-400 font-semibold">${actionLabel}</span>
+      `;
+    }
+
+    if (this.powerBtn) {
+      this.powerBtn.classList.add('opacity-50', 'pointer-events-none');
+      if (this.powerTextEl) this.powerTextEl.textContent = actionLabel;
+    }
+
+    try {
+      const res = await fetch('/api/ollama/service', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur service');
+
+      this.startPollingTransition(action === 'start');
+    } catch (err) {
+      console.error('Erreur bascule service Ollama:', err);
+      this.isToggling = false;
+      if (this.powerBtn) this.powerBtn.classList.remove('opacity-50', 'pointer-events-none');
+      this.fetchModels();
+    }
+  }
+
+  startPollingTransition(targetRunning) {
+    if (this.pollInterval) clearInterval(this.pollInterval);
+
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    this.pollInterval = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch('/api/ollama/status');
+        const data = await res.json();
+
+        if (data.isRunning === targetRunning || attempts >= maxAttempts) {
+          clearInterval(this.pollInterval);
+          this.pollInterval = null;
+          this.isToggling = false;
+          if (this.powerBtn) this.powerBtn.classList.remove('opacity-50', 'pointer-events-none');
+          await this.fetchModels();
+          if (window.ollamaWidget) window.ollamaWidget.checkStatus();
+        }
+      } catch {
+        if (attempts >= maxAttempts) {
+          clearInterval(this.pollInterval);
+          this.pollInterval = null;
+          this.isToggling = false;
+          if (this.powerBtn) this.powerBtn.classList.remove('opacity-50', 'pointer-events-none');
+          this.fetchModels();
+        }
+      }
+    }, 1500);
+  }
+
+  async checkStatus() {
+    return this.fetchModels();
+  }
+
   async fetchModels() {
     try {
       const res = await fetch('/api/ollama/status');
       const data = await res.json();
+      this.isRunning = Boolean(data.isRunning);
 
-      if (data.isRunning && data.models.length > 0) {
+      if (this.powerBtn && this.powerTextEl) {
+        if (this.isRunning) {
+          this.powerTextEl.textContent = 'Éteindre';
+          this.powerBtn.title = 'Arrêter le service Ollama';
+          this.powerBtn.className = 'px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-rose-400 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm';
+        } else {
+          this.powerTextEl.textContent = 'Démarrer';
+          this.powerBtn.title = 'Lancer le service Ollama';
+          this.powerBtn.className = 'px-2.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 border border-purple-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md';
+        }
+      }
+
+      if (data.isRunning && data.models && data.models.length > 0) {
         this.models = data.models;
         if (this.statusBadge) {
           this.statusBadge.innerHTML = `

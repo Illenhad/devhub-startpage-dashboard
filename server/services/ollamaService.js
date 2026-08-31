@@ -1,3 +1,7 @@
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execAsync = promisify(exec);
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
 
 /**
@@ -531,5 +535,66 @@ export async function deleteOllamaModel(modelName) {
   }
 
   return { success: true, message: `Modèle ${modelName} supprimé avec succès` };
+}
+
+/**
+ * Démarre ou éteint l'application/service Ollama
+ * Supporte macOS (Ollama.app via open / osascript / pkill ou ollama serve), Windows (PowerShell / taskkill) et Linux (systemctl / ollama serve)
+ */
+export async function manageOllamaService(action) {
+  if (action !== 'start' && action !== 'stop') {
+    throw new Error(`Action de service non supportée: ${action}`);
+  }
+
+  const isMac = process.platform === 'darwin';
+  const isWindows = process.platform === 'win32';
+
+  if (action === 'start') {
+    if (isMac) {
+      try {
+        await execAsync('open -a Ollama || open /Applications/Ollama.app || nohup /usr/local/bin/ollama serve > /dev/null 2>&1 &');
+        return { success: true, message: 'Démarrage d’Ollama initié...' };
+      } catch (err) {
+        throw new Error(`Échec du lancement d’Ollama: ${err.message}`);
+      }
+    } else if (isWindows) {
+      try {
+        await execAsync('powershell -NoProfile -Command "$app = \\"$env:LOCALAPPDATA\\Programs\\Ollama\\ollama app.exe\\"; if (Test-Path $app) { Start-Process $app } else { Start-Process \'ollama\' -ArgumentList \'serve\' -WindowStyle Hidden }"');
+        return { success: true, message: 'Démarrage d’Ollama initié...' };
+      } catch (err) {
+        throw new Error(`Échec du lancement d’Ollama sur Windows: ${err.message}`);
+      }
+    } else {
+      try {
+        await execAsync('systemctl start ollama || nohup ollama serve > /dev/null 2>&1 &');
+        return { success: true, message: 'Service Ollama démarré' };
+      } catch (err) {
+        throw new Error(`Échec du démarrage d’Ollama: ${err.message}`);
+      }
+    }
+  } else if (action === 'stop') {
+    if (isMac) {
+      try {
+        await execAsync('killall -9 Ollama ollama 2>/dev/null; pkill -9 -i -f "ollama" 2>/dev/null || true');
+        return { success: true, message: 'Fermeture d’Ollama en cours...' };
+      } catch (err) {
+        throw new Error(`Échec de la fermeture d’Ollama: ${err.message}`);
+      }
+    } else if (isWindows) {
+      try {
+        await execAsync('powershell -NoProfile -Command "Stop-Process -Name \'ollama app\', \'ollama\' -Force -ErrorAction SilentlyContinue"');
+        return { success: true, message: 'Fermeture d’Ollama en cours...' };
+      } catch (err) {
+        throw new Error(`Échec de la fermeture d’Ollama sur Windows: ${err.message}`);
+      }
+    } else {
+      try {
+        await execAsync('systemctl stop ollama || pkill -x ollama || true');
+        return { success: true, message: 'Service Ollama arrêté' };
+      } catch (err) {
+        throw new Error(`Échec de l’arrêt d’Ollama: ${err.message}`);
+      }
+    }
+  }
 }
 

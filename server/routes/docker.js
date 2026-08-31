@@ -4,10 +4,29 @@ import {
   containerAction, 
   getContainerLogs, 
   getDockerStats, 
-  pruneContainers 
+  pruneContainers,
+  manageDockerService
 } from '../services/dockerService.js';
 
 const router = Router();
+
+/**
+ * POST /api/docker/service
+ * Démarre ou éteint l'application/service Docker
+ */
+router.post('/service', async (req, res) => {
+  const { action } = req.body;
+  if (!action || !['start', 'stop'].includes(action)) {
+    return res.status(400).json({ error: 'Action invalide. Utilisez "start" ou "stop".' });
+  }
+
+  try {
+    const result = await manageDockerService(action);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 /**
  * GET /api/docker
