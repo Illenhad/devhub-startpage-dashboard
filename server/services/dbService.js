@@ -15,18 +15,74 @@ if (!fs.existsSync(dataDir)) {
 const dbPath = path.join(dataDir, 'devhub.sqlite');
 const replicaDbPath = path.join(dataDir, 'devhub_replica.sqlite');
 const oldDbPath = path.join(dataDir, 'machub.sqlite');
+const envPath = path.join(__dirname, '..', '..', '.env');
+
 if (fs.existsSync(oldDbPath) && !fs.existsSync(dbPath)) {
   try {
     fs.renameSync(oldDbPath, dbPath);
   } catch {}
 }
 
+/**
+ * Charge les identifiants Turso depuis le fichier .env
+ */
+function loadEnvCredentials() {
+  if (!fs.existsSync(envPath)) return {};
+  try {
+    const content = fs.readFileSync(envPath, 'utf8');
+    const result = {};
+    for (const line of content.split('\n')) {
+      const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+      if (match) {
+        let val = match[2] || '';
+        val = val.replace(/^['"]|['"]$/g, '').trim();
+        result[match[1]] = val;
+      }
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Sauvegarde les identifiants Turso dans le fichier .env
+ */
+function saveEnvCredentials({ syncUrl, authToken, enabled }) {
+  try {
+    let existing = '';
+    if (fs.existsSync(envPath)) {
+      existing = fs.readFileSync(envPath, 'utf8');
+    }
+
+    const envMap = {};
+    for (const line of existing.split('\n')) {
+      const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+      if (match) {
+        envMap[match[1]] = match[2] || '';
+      }
+    }
+
+    if (syncUrl !== undefined) envMap['TURSO_DATABASE_URL'] = syncUrl;
+    if (authToken !== undefined) envMap['TURSO_AUTH_TOKEN'] = authToken;
+    if (enabled !== undefined) envMap['TURSO_SYNC_ENABLED'] = enabled ? 'true' : 'false';
+
+    const lines = Object.entries(envMap).map(([k, v]) => `${k}=${v}`);
+    fs.writeFileSync(envPath, lines.join('\n') + '\n', 'utf8');
+    console.log('📝 [Env] Identifiants Turso persistés dans le fichier .env');
+  } catch (err) {
+    console.warn('⚠️ [Env] Impossible d\'écrire dans .env:', err.message);
+  }
+}
+
+const initialEnv = loadEnvCredentials();
+
 let client = null;
 let isReplicaActive = false;
 let syncConfig = {
-  syncUrl: process.env.TURSO_DATABASE_URL || process.env.TURSO_SYNC_URL || '',
-  authToken: process.env.TURSO_AUTH_TOKEN || '',
-  enabled: true
+  syncUrl: initialEnv.TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL || process.env.TURSO_SYNC_URL || '',
+  authToken: initialEnv.TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN || '',
+  enabled: initialEnv.TURSO_SYNC_ENABLED !== undefined ? initialEnv.TURSO_SYNC_ENABLED === 'true' : true
 };
 
 let lastSyncAt = null;
@@ -50,7 +106,7 @@ async function migrateLocalDataToReplica(localC, replicaC) {
 
       // 1. Settings
       try {
-        const settingsRes = await localC.execute('SELECT key, value FROM settings WHERE key NOT LIKE "turso_%"');
+        const settingsRes = await localC.execute("SELECT key, value FROM settings WHERE key NOT LIKE 'turso_%'");
         for (const row of settingsRes.rows) {
           await replicaC.execute({
             sql: 'INSERT INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
@@ -185,15 +241,22 @@ export async function initDatabase() {
   await createSchema(localClient);
   await seedDefaults(localClient);
 
-  // 2. Charger les éventuels identifiants Turso stockés en base SQLite
+  // 2. Charger les identifiants Turso depuis le fichier .env et SQLite
+  const envCreds = loadEnvCredentials();
+  if (envCreds.TURSO_DATABASE_URL) syncConfig.syncUrl = envCreds.TURSO_DATABASE_URL;
+  if (envCreds.TURSO_AUTH_TOKEN && envCreds.TURSO_AUTH_TOKEN.startsWith('eyJ')) syncConfig.authToken = envCreds.TURSO_AUTH_TOKEN;
+  if (envCreds.TURSO_SYNC_ENABLED !== undefined) syncConfig.enabled = envCreds.TURSO_SYNC_ENABLED === 'true';
+
   try {
-    const settingsRes = await localClient.execute('SELECT key, value FROM settings WHERE key IN ("turso_sync_url", "turso_auth_token", "turso_sync_enabled")');
+    const settingsRes = await localClient.execute("SELECT key, value FROM settings WHERE key IN ('turso_sync_url', 'turso_auth_token', 'turso_sync_enabled')");
     for (const row of settingsRes.rows) {
-      if (row.key === 'turso_sync_url' && row.value) syncConfig.syncUrl = String(row.value);
-      if (row.key === 'turso_auth_token' && row.value && String(row.value).startsWith('eyJ')) syncConfig.authToken = String(row.value);
-      if (row.key === 'turso_sync_enabled') syncConfig.enabled = row.value === 'true' || row.value === true || row.value === '1';
+      if (row.key === 'turso_sync_url' && row.value && !syncConfig.syncUrl) syncConfig.syncUrl = String(row.value);
+      if (row.key === 'turso_auth_token' && row.value && String(row.value).startsWith('eyJ') && !syncConfig.authToken) syncConfig.authToken = String(row.value);
+      if (row.key === 'turso_sync_enabled' && envCreds.TURSO_SYNC_ENABLED === undefined) syncConfig.enabled = row.value === 'true' || row.value === true || row.value === '1';
     }
-  } catch {}
+  } catch (err) {
+    console.warn('⚠️ [Turso] Erreur lecture settings initDatabase:', err.message);
+  }
 
   // 3. Si Turso est configuré et activé, tenter la connexion en mode Embedded Replica
   if (syncConfig.syncUrl && syncConfig.authToken && syncConfig.enabled) {
@@ -439,7 +502,7 @@ export async function updateSyncConfig({ syncUrl, authToken, enabled }) {
       lastSyncStatus = 'success';
       lastSyncError = null;
 
-      // Sauvegarder les identifiants
+      // Sauvegarder les identifiants dans la base active
       await client.execute({
         sql: `
           INSERT INTO settings (key, value, updated_at) VALUES ('turso_sync_url', ?, CURRENT_TIMESTAMP)
@@ -462,6 +525,36 @@ export async function updateSyncConfig({ syncUrl, authToken, enabled }) {
         args: []
       });
 
+      // Sauvegarder également dans le fichier SQLite local autonome
+      try {
+        const localSaveClient = createClient({ url: `file:${dbPath}` });
+        await localSaveClient.execute({
+          sql: `
+            INSERT INTO settings (key, value, updated_at) VALUES ('turso_sync_url', ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+          `,
+          args: [syncConfig.syncUrl]
+        });
+        await localSaveClient.execute({
+          sql: `
+            INSERT INTO settings (key, value, updated_at) VALUES ('turso_auth_token', ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+          `,
+          args: [syncConfig.authToken]
+        });
+        await localSaveClient.execute({
+          sql: `
+            INSERT INTO settings (key, value, updated_at) VALUES ('turso_sync_enabled', 'true', CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+          `,
+          args: []
+        });
+        localSaveClient.close();
+      } catch {}
+
+      // Sauvegarder dans le fichier .env
+      saveEnvCredentials({ syncUrl: syncConfig.syncUrl, authToken: syncConfig.authToken, enabled: true });
+
       return {
         ...getSyncStatus(),
         success: true,
@@ -472,6 +565,9 @@ export async function updateSyncConfig({ syncUrl, authToken, enabled }) {
       isReplicaActive = false;
       lastSyncStatus = 'error';
       lastSyncError = err.message;
+
+      // Enregistrer quand même les saisies dans .env et local pour éviter toute perte
+      saveEnvCredentials({ syncUrl: syncConfig.syncUrl, authToken: syncConfig.authToken, enabled: false });
 
       // Enregistrer quand même les saisies en local pour que l'utilisateur n'ait pas à tout retaper
       try {
@@ -507,6 +603,8 @@ export async function updateSyncConfig({ syncUrl, authToken, enabled }) {
     isReplicaActive = false;
     lastSyncStatus = 'idle';
     lastSyncError = null;
+
+    saveEnvCredentials({ syncUrl: syncConfig.syncUrl, authToken: syncConfig.authToken, enabled: false });
 
     try {
       await client.execute({
