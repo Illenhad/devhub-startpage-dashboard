@@ -320,8 +320,12 @@ async function getUnixDisks() {
  */
 async function getWindowsDisks() {
   try {
-    const cmd = `powershell -NoProfile -Command "Get-CimInstance Win32_LogicalDisk | Select-Object DeviceID,FileSystem,Size,FreeSpace,VolumeName | ConvertTo-Json"`;
-    const { stdout } = await execAsync(cmd, { timeout: 4000 });
+    const { stdout } = await execFileAsync('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      'Get-CimInstance Win32_LogicalDisk | Select-Object DeviceID,FileSystem,Size,FreeSpace,VolumeName | ConvertTo-Json'
+    ], { timeout: 6000 });
     if (!stdout.trim()) return [];
 
     let parsed = JSON.parse(stdout.trim());
@@ -511,21 +515,90 @@ async function getUnixProcesses() {
   }
 }
 
+let cachedWindowsProcesses = null;
+let lastWindowsProcessFetch = 0;
+const WINDOWS_PROCESS_CACHE_TTL = 2500;
+
 /**
- * Processus Windows : PowerShell Get-Process
+ * Fallback rapide Processus Windows via tasklist
+ */
+async function getWindowsProcessesFallback() {
+  try {
+    const { stdout } = await execFileAsync('tasklist.exe', ['/FO', 'CSV', '/NH'], { maxBuffer: 10 * 1024 * 1024, timeout: 4000 });
+    const lines = stdout.trim().split('\n');
+    const totalMem = os.totalmem();
+    const username = os.userInfo()?.username || 'SYSTEM';
+    const processes = [];
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line) continue;
+
+      const match = line.match(/^"([^"]+)","(\d+)","([^"]*)","([^"]*)","([^"]*)"/);
+      if (!match) continue;
+
+      const name = match[1];
+      const pid = parseInt(match[2], 10);
+      const rawMem = match[5];
+      const memDigits = rawMem ? rawMem.replace(/[^\d]/g, '') : '0';
+      const rssKB = parseInt(memDigits, 10) || 0;
+      const rssMB = parseFloat((rssKB / 1024).toFixed(1));
+      const mem = totalMem > 0 ? parseFloat(((rssKB * 1024 / totalMem) * 100).toFixed(1)) : 0;
+      const rssFormatted = rssMB >= 1024 ? `${(rssMB / 1024).toFixed(2)} Go` : `${rssMB} Mo`;
+
+      processes.push({
+        pid,
+        user: username,
+        cpu: 0,
+        mem,
+        rssKB,
+        rssMB,
+        rssFormatted,
+        uptime: 'Actif',
+        uptimeSeconds: 0,
+        name: name.replace(/\.exe$/i, ''),
+        command: name
+      });
+    }
+
+    processes.sort((a, b) => b.rssKB - a.rssKB);
+    return processes;
+  } catch (err) {
+    console.error('Erreur getWindowsProcessesFallback:', err.message);
+    return [];
+  }
+}
+
+/**
+ * Processus Windows : PowerShell Get-Process avec Fallback tasklist & Cache
  */
 async function getWindowsProcesses() {
+  const now = Date.now();
+  if (cachedWindowsProcesses && (now - lastWindowsProcessFetch < WINDOWS_PROCESS_CACHE_TTL)) {
+    return cachedWindowsProcesses;
+  }
+
   try {
-    const cmd = `powershell -NoProfile -Command "Get-Process | Select-Object Id,ProcessName,CPU,WorkingSet64 | ConvertTo-Json -Compress"`;
-    const { stdout } = await execAsync(cmd, { timeout: 4000, maxBuffer: 10 * 1024 * 1024 });
-    if (!stdout.trim()) return [];
+    const { stdout } = await execFileAsync('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      'Get-Process | Select-Object Id,ProcessName,CPU,WorkingSet64 | ConvertTo-Json -Compress'
+    ], { timeout: 7000, maxBuffer: 10 * 1024 * 1024 });
+
+    if (!stdout.trim()) {
+      cachedWindowsProcesses = await getWindowsProcessesFallback();
+      lastWindowsProcessFetch = Date.now();
+      return cachedWindowsProcesses;
+    }
 
     let parsed = JSON.parse(stdout.trim());
     if (!Array.isArray(parsed)) parsed = [parsed];
 
     const totalMem = os.totalmem();
+    const username = os.userInfo()?.username || 'SYSTEM';
 
-    return parsed.filter(p => p && p.Id).map(p => {
+    const processes = parsed.filter(p => p && p.Id).map(p => {
       const pid = p.Id;
       const name = p.ProcessName || 'Inconnu';
       const cpu = p.CPU ? parseFloat(p.CPU.toFixed(1)) : 0;
@@ -540,7 +613,7 @@ async function getWindowsProcesses() {
 
       return {
         pid,
-        user: os.userInfo().username || 'SYSTEM',
+        user: username,
         cpu,
         mem,
         rssKB,
@@ -552,9 +625,15 @@ async function getWindowsProcesses() {
         command: name
       };
     });
-  } catch (err) {
-    console.error('Erreur getWindowsProcesses:', err);
-    return [];
+
+    processes.sort((a, b) => (b.cpu - a.cpu) || (b.rssKB - a.rssKB));
+    cachedWindowsProcesses = processes;
+    lastWindowsProcessFetch = Date.now();
+    return processes;
+  } catch {
+    cachedWindowsProcesses = await getWindowsProcessesFallback();
+    lastWindowsProcessFetch = Date.now();
+    return cachedWindowsProcesses;
   }
 }
 
