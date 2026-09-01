@@ -144,18 +144,18 @@ class OllamaWidget {
     if (this.summaryContainerEl) {
       this.summaryContainerEl.innerHTML = `
         <div class="space-y-3 flex-1 flex flex-col justify-between">
-          <!-- Tuiles d'informations Modèles -->
-          <div class="grid grid-cols-2 gap-2">
-            <div class="p-2.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex flex-col justify-between">
-              <span class="text-[9px] text-purple-400 uppercase font-semibold">Modèles Locaux</span>
-              <span class="font-mono text-xl font-black text-white my-0.5">${modelCount}</span>
-              <span class="text-[9px] text-purple-400/80 font-medium">installé${modelCount > 1 ? 's' : ''}</span>
+          <!-- Compteurs & Modèles (Harmonisé avec RSS) -->
+          <div class="grid grid-cols-2 gap-2 text-center">
+            <div class="p-2.5 rounded-2xl notif-box-soft flex flex-col justify-between">
+              <span class="text-[9px] notif-text-accent font-semibold uppercase">Modèles Locaux</span>
+              <span class="font-mono text-xl font-black notif-text-accent my-0.5">${modelCount}</span>
+              <span class="text-[9px] notif-text-accent opacity-80 font-medium">${modelCount} installé${modelCount > 1 ? 's' : ''}</span>
             </div>
 
             <div class="p-2.5 rounded-2xl bg-zinc-900/70 border border-zinc-800 flex flex-col justify-between">
-              <span class="text-[9px] text-zinc-400 uppercase font-semibold">Modèle Actif</span>
-              <span class="font-mono text-xs font-bold text-indigo-300 my-0.5 truncate" title="${activeModel?.name || '--'}">
-                ${activeModel?.name || '--'}
+              <span class="text-[9px] text-zinc-400 uppercase font-medium">Modèle Actif</span>
+              <span class="font-mono text-xs font-bold text-zinc-100 my-0.5 truncate block" title="${activeModel?.name || '--'}">
+                ${activeModel?.name || 'Aucun'}
               </span>
               <span class="text-[9px] text-zinc-500 font-mono">${activeModel?.size || 'Prêt'}</span>
             </div>
@@ -163,8 +163,14 @@ class OllamaWidget {
 
           <!-- Ligne de statut compacte -->
           <div class="p-2 rounded-xl bg-zinc-900/40 border border-zinc-800/60 flex items-center justify-between text-[10px] text-zinc-400 font-mono">
-            <span>Moteur LLM</span>
-            <span class="text-indigo-400 font-bold">● Streaming actif</span>
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="text-xs shrink-0">⚡</span>
+              <span class="text-[11px] font-medium text-zinc-300 font-sans">Moteur LLM</span>
+            </div>
+            <span class="notif-text-accent font-bold font-mono flex items-center gap-1 text-[10px]">
+              <span class="w-1.5 h-1.5 rounded-full notif-badge-dot animate-pulse"></span>
+              <span>Streaming actif</span>
+            </span>
           </div>
 
           <!-- Bouton accès à la page complète Ollama Studio -->
@@ -173,7 +179,7 @@ class OllamaWidget {
             class="w-full py-2 px-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] font-semibold text-zinc-300 hover:text-white flex items-center justify-between transition-all group shadow-sm"
           >
             <span class="flex items-center gap-1.5">
-              <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              <svg class="w-3.5 h-3.5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
               <span>Ouvrir AI Studio</span>
             </span>
             <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
@@ -206,7 +212,7 @@ class OllamaWidget {
           <div class="flex items-center justify-center gap-2 pt-1">
             <button
               onclick="window.ollamaWidget.toggleService()"
-              class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+              class="px-3 py-1.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
             >
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 0M12 2v10"/></svg>
               <span>Démarrer Ollama</span>

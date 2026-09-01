@@ -242,7 +242,7 @@ class DockerFullWidget {
       } else {
         this.powerTextEl.textContent = 'Démarrer Docker';
         this.powerBtn.title = 'Lancer Docker Desktop';
-        this.powerBtn.className = 'px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 border border-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md';
+        this.powerBtn.className = 'px-3 py-1.5 rounded-xl bg-brand-500 hover:bg-brand-600 border border-brand-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md';
       }
     }
 
@@ -267,7 +267,7 @@ class DockerFullWidget {
           <div class="pt-2">
             <button
               onclick="window.dockerFullWidget.toggleService()"
-              class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-500/10 cursor-pointer"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold transition-all shadow-lg shadow-brand-500/20 cursor-pointer"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 0M12 2v10"/></svg>
               <span>Démarrer Docker Desktop</span>

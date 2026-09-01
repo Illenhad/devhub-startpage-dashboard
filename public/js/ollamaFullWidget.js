@@ -1129,7 +1129,7 @@ class OllamaFullWidget {
         } else {
           this.powerTextEl.textContent = 'Démarrer';
           this.powerBtn.title = 'Lancer le service Ollama';
-          this.powerBtn.className = 'px-2.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 border border-purple-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md';
+          this.powerBtn.className = 'px-2.5 py-1.5 rounded-xl bg-brand-500 hover:bg-brand-600 border border-brand-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md';
         }
       }
 
@@ -1947,7 +1947,7 @@ class OllamaFullWidget {
               <span class="text-[10px] text-zinc-600 font-mono">${m.time || ''}</span>
             </div>
 
-            <div class="p-4 rounded-2xl ${isUser ? 'bg-brand-600 text-white rounded-tr-sm shadow-md' : 'bg-zinc-900/90 border border-zinc-800 text-zinc-100 rounded-tl-sm shadow-lg'} space-y-2">
+            <div class="p-4 rounded-2xl ${isUser ? 'chat-user-bubble text-white rounded-tr-sm shadow-md' : 'chat-ai-bubble border border-zinc-800 rounded-tl-sm shadow-lg'} space-y-2">
               
               <!-- Si des fichiers ou images sont attachés au message utilisateur -->
               ${(isUser && m.attachments && m.attachments.length > 0) ? `
@@ -1992,7 +1992,7 @@ class OllamaFullWidget {
                     </span>
                     <button
                       onclick="window.ollamaFullWidget.regenerateResponse(${idx})"
-                      class="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm cursor-pointer"
+                      class="px-2.5 py-1 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-[10px] font-bold flex items-center gap-1 transition-all shadow-sm cursor-pointer"
                     >
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                       <span>Rejouer le prompt</span>

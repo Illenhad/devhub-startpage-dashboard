@@ -281,8 +281,15 @@ html.light button[class*="bg-zinc-800"]:hover {
 html.light .tab-nav-btn.bg-brand-500,
 html.light .theme-toggle-btn.bg-brand-500,
 html.light .theme-preset-btn.bg-brand-500,
-html.light button.bg-brand-500 {
+html.light button.bg-brand-500,
+html.light .bg-brand-500 {
   background-color: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+html.light button.bg-brand-600,
+html.light .bg-brand-600 {
+  background-color: #4f46e5 !important;
   color: #ffffff !important;
 }
 
@@ -291,11 +298,11 @@ html.light [class*="border-zinc-"] {
   border-color: #e2e8f0 !important;
 }
 
-/* Typographie & Titres en mode clair */
+/* Typographie & Titres en mode clair (Ultra net et contrasté) */
 html.light .text-white,
 html.light .text-zinc-100,
 html.light .text-zinc-200 {
-  color: #0f172a !important;
+  color: #09090b !important;
 }
 
 html.light .text-zinc-300,
@@ -306,6 +313,86 @@ html.light .text-zinc-400 {
 html.light .text-zinc-500,
 html.light .text-zinc-600 {
   color: #64748b !important;
+}
+
+/* Exceptions obligatoires : Éléments sur fond coloré gardant le texte blanc */
+html.light .bg-brand-500,
+html.light .bg-brand-500 *,
+html.light .bg-brand-600,
+html.light .bg-brand-600 *,
+html.light button.bg-brand-500,
+html.light button.bg-brand-500 *,
+html.light button.bg-brand-600,
+html.light button.bg-brand-600 *,
+html.light .tab-nav-btn.bg-brand-500,
+html.light .tab-nav-btn.bg-brand-500 *,
+html.light .theme-toggle-btn.bg-brand-500,
+html.light .theme-toggle-btn.bg-brand-500 *,
+html.light .theme-preset-btn.bg-brand-500,
+html.light .theme-preset-btn.bg-brand-500 *,
+html.light .app-logo-badge,
+html.light .app-logo-badge *,
+html.light .chat-user-bubble,
+html.light .chat-user-bubble *,
+html.light .notif-badge-solid,
+html.light .notif-badge-solid *,
+html.light .btn-brand,
+html.light .btn-brand * {
+  color: #ffffff !important;
+}
+
+/* Bulles de discussion Ollama spécifiques (Haute Lisibilité) */
+.chat-user-bubble {
+  background-color: #4f46e5 !important;
+  color: #ffffff !important;
+}
+
+.chat-user-bubble,
+.chat-user-bubble p,
+.chat-user-bubble span,
+.chat-user-bubble div {
+  color: #ffffff !important;
+}
+
+html[data-theme-preset="code"] .chat-user-bubble {
+  background-color: #059669 !important;
+}
+
+html[data-theme-preset="reading"] .chat-user-bubble {
+  background-color: #d97706 !important;
+}
+
+html.light[data-theme-preset="reading"] .chat-user-bubble {
+  background-color: #b45309 !important;
+}
+
+html[data-theme-preset="performance"] .chat-user-bubble {
+  background: linear-gradient(135deg, #db2777, #7c3aed) !important;
+}
+
+.chat-ai-bubble {
+  background-color: rgba(24, 24, 27, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f4f4f5;
+}
+
+html.light .chat-ai-bubble {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #09090b !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05) !important;
+}
+
+html.light .chat-ai-bubble .markdown-body,
+html.light .chat-ai-bubble .markdown-body p,
+html.light .chat-ai-bubble .markdown-body li,
+html.light .chat-ai-bubble .markdown-body strong {
+  color: #0f172a !important;
+}
+
+html.light .chat-ai-bubble .markdown-body code {
+  background-color: #f1f5f9 !important;
+  color: #4338ca !important;
 }
 
 /* Couleurs d'accentuation à fort contraste pour fond clair */
@@ -386,13 +473,79 @@ html.light input,
 html.light select,
 html.light textarea {
   background-color: #ffffff !important;
-  color: #0f172a !important;
+  color: #09090b !important;
   border-color: #cbd5e1 !important;
 }
 
 html.light input::placeholder,
 html.light textarea::placeholder {
   color: #94a3b8 !important;
+}
+
+/* Fond des conteneurs de formulaire et zones de texte */
+html.light #full-ollama-custom-system,
+html.light #full-ollama-prompt-input {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Messages de discussion Ollama en Mode Clair */
+html.light #full-ollama-chat-messages .glass-card,
+html.light #full-ollama-chat-messages [class*="bg-zinc-900"],
+html.light #full-ollama-chat-messages [class*="bg-zinc-950"] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #09090b !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Bulle de l'utilisateur en Mode Clair */
+html.light #full-ollama-chat-messages .bg-brand-500,
+html.light #full-ollama-chat-messages [class*="bg-brand-600"] {
+  background-color: #4f46e5 !important;
+  color: #ffffff !important;
+}
+
+/* Bannière Persona & Prompt Actif en Mode Clair */
+html.light [class*="bg-purple-500/5"],
+html.light [class*="bg-brand-500/5"] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light [class*="bg-purple-500/5"] p,
+html.light [class*="bg-purple-500/5"] span,
+html.light [class*="bg-brand-500/5"] p,
+html.light [class*="bg-brand-500/5"] span {
+  color: #1e293b !important;
+}
+
+/* Blocs de réflexion (Think Blocks) en Mode Clair */
+html.light details.think-block,
+html.light [class*="bg-purple-950/"] {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+html.light details.think-block summary,
+html.light details.think-block span {
+  color: #1e293b !important;
+}
+
+/* Boutons secondaires en Mode Clair */
+html.light .bg-zinc-800,
+html.light [class*="bg-zinc-800/"] {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light .bg-zinc-800:hover,
+html.light [class*="bg-zinc-800/"]:hover {
+  background-color: #e2e8f0 !important;
+  color: #000000 !important;
 }
 
 /* Boutons d'onglets, boutons de mode et boutons de preset inactifs */
@@ -413,7 +566,8 @@ html.light .theme-preset-btn:not(.bg-brand-500):hover {
 html.light #rss-reader-modal .glass-card,
 html.light #rss-reader-modal [class*="bg-zinc-950"],
 html.light #ollama-persona-modal [class*="bg-zinc-900"],
-html.light #ollama-persona-modal [class*="bg-zinc-950"] {
+html.light #ollama-persona-modal [class*="bg-zinc-950"],
+html.light #ollama-models-modal [class*="bg-zinc-900"] {
   background-color: #ffffff !important;
   border-color: #e2e8f0 !important;
   color: #0f172a !important;
@@ -530,7 +684,10 @@ html.dark[data-theme-preset="code"] .glass-card:hover {
 html.dark[data-theme-preset="code"] .tab-nav-btn.bg-brand-500,
 html.dark[data-theme-preset="code"] .theme-toggle-btn.bg-brand-500,
 html.dark[data-theme-preset="code"] .theme-preset-btn.bg-brand-500,
-html.dark[data-theme-preset="code"] button.bg-brand-500 {
+html.dark[data-theme-preset="code"] button.bg-brand-500,
+html.dark[data-theme-preset="code"] .bg-brand-500,
+html.dark[data-theme-preset="code"] button.bg-brand-600,
+html.dark[data-theme-preset="code"] .bg-brand-600 {
   background-color: #10b981 !important;
   color: #042f1d !important;
   font-weight: 800 !important;
@@ -573,7 +730,10 @@ html.light[data-theme-preset="code"] .glass-card {
 html.light[data-theme-preset="code"] .tab-nav-btn.bg-brand-500,
 html.light[data-theme-preset="code"] .theme-toggle-btn.bg-brand-500,
 html.light[data-theme-preset="code"] .theme-preset-btn.bg-brand-500,
-html.light[data-theme-preset="code"] button.bg-brand-500 {
+html.light[data-theme-preset="code"] button.bg-brand-500,
+html.light[data-theme-preset="code"] .bg-brand-500,
+html.light[data-theme-preset="code"] button.bg-brand-600,
+html.light[data-theme-preset="code"] .bg-brand-600 {
   background-color: #059669 !important;
   color: #ffffff !important;
 }
@@ -617,7 +777,10 @@ html.dark[data-theme-preset="reading"] .glass-card:hover {
 html.dark[data-theme-preset="reading"] .tab-nav-btn.bg-brand-500,
 html.dark[data-theme-preset="reading"] .theme-toggle-btn.bg-brand-500,
 html.dark[data-theme-preset="reading"] .theme-preset-btn.bg-brand-500,
-html.dark[data-theme-preset="reading"] button.bg-brand-500 {
+html.dark[data-theme-preset="reading"] button.bg-brand-500,
+html.dark[data-theme-preset="reading"] .bg-brand-500,
+html.dark[data-theme-preset="reading"] button.bg-brand-600,
+html.dark[data-theme-preset="reading"] .bg-brand-600 {
   background-color: #d97706 !important;
   color: #ffffff !important;
 }
@@ -652,7 +815,10 @@ html.light[data-theme-preset="reading"] .glass-card {
 html.light[data-theme-preset="reading"] .tab-nav-btn.bg-brand-500,
 html.light[data-theme-preset="reading"] .theme-toggle-btn.bg-brand-500,
 html.light[data-theme-preset="reading"] .theme-preset-btn.bg-brand-500,
-html.light[data-theme-preset="reading"] button.bg-brand-500 {
+html.light[data-theme-preset="reading"] button.bg-brand-500,
+html.light[data-theme-preset="reading"] .bg-brand-500,
+html.light[data-theme-preset="reading"] button.bg-brand-600,
+html.light[data-theme-preset="reading"] .bg-brand-600 {
   background-color: #b45309 !important;
   color: #ffffff !important;
 }
@@ -705,7 +871,10 @@ html.dark[data-theme-preset="performance"] .glass-card:hover {
 html.dark[data-theme-preset="performance"] .tab-nav-btn.bg-brand-500,
 html.dark[data-theme-preset="performance"] .theme-toggle-btn.bg-brand-500,
 html.dark[data-theme-preset="performance"] .theme-preset-btn.bg-brand-500,
-html.dark[data-theme-preset="performance"] button.bg-brand-500 {
+html.dark[data-theme-preset="performance"] button.bg-brand-500,
+html.dark[data-theme-preset="performance"] .bg-brand-500,
+html.dark[data-theme-preset="performance"] button.bg-brand-600,
+html.dark[data-theme-preset="performance"] .bg-brand-600 {
   background: linear-gradient(135deg, #ec4899, #8b5cf6) !important;
   color: #ffffff !important;
   box-shadow: 0 0 15px rgba(236, 72, 153, 0.35) !important;
@@ -741,7 +910,10 @@ html.light[data-theme-preset="performance"] .glass-card {
 html.light[data-theme-preset="performance"] .tab-nav-btn.bg-brand-500,
 html.light[data-theme-preset="performance"] .theme-toggle-btn.bg-brand-500,
 html.light[data-theme-preset="performance"] .theme-preset-btn.bg-brand-500,
-html.light[data-theme-preset="performance"] button.bg-brand-500 {
+html.light[data-theme-preset="performance"] button.bg-brand-500,
+html.light[data-theme-preset="performance"] .bg-brand-500,
+html.light[data-theme-preset="performance"] button.bg-brand-600,
+html.light[data-theme-preset="performance"] .bg-brand-600 {
   background: linear-gradient(135deg, #db2777, #7c3aed) !important;
   color: #ffffff !important;
 }
@@ -907,6 +1079,52 @@ html[data-theme-preset="reading"] .tab-nav-btn.bg-brand-500 .notif-badge-solid {
 
 html[data-theme-preset="performance"] .tab-nav-btn.bg-brand-500 #nav-rss-badge,
 html[data-theme-preset="performance"] .tab-nav-btn.bg-brand-500 .notif-badge-solid {
+  background-color: #ffffff !important;
+  color: #be185d !important;
+  font-weight: 900 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Badge de l'onglet Projets dans la barre de navigation */
+.tab-nav-btn:not(.bg-brand-500) #nav-badge-projects {
+  background-color: #27272a !important;
+  color: #a1a1aa !important;
+}
+
+html.light .tab-nav-btn:not(.bg-brand-500) #nav-badge-projects {
+  background-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+.tab-nav-btn.bg-brand-500 #nav-badge-projects {
+  background-color: #ffffff !important;
+  color: #4338ca !important;
+  font-weight: 900 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+}
+
+html[data-theme-preset="code"] .tab-nav-btn.bg-brand-500 #nav-badge-projects {
+  background-color: #042f1d !important;
+  color: #34d399 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35) !important;
+}
+
+html.light[data-theme-preset="code"] .tab-nav-btn.bg-brand-500 #nav-badge-projects {
+  background-color: #ffffff !important;
+  color: #059669 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+}
+
+html[data-theme-preset="reading"] .tab-nav-btn.bg-brand-500 #nav-badge-projects {
+  background-color: #ffffff !important;
+  color: #b45309 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+}
+
+html[data-theme-preset="performance"] .tab-nav-btn.bg-brand-500 #nav-badge-projects {
   background-color: #ffffff !important;
   color: #be185d !important;
   font-weight: 900 !important;
