@@ -72,25 +72,26 @@
     <div class="max-w-[1480px] w-full mx-auto space-y-3.5 flex-1">
       
       <!-- ========================================== -->
+      <!-- ========================================== -->
       <!-- 1. BARRE DE NAVIGATION SUPÉRIEURE (ONGLETS)-->
       <!-- ========================================== -->
-      <nav class="flex items-center justify-between gap-2.5 border-b border-zinc-800/80 pb-3">
+      <nav class="flex items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
         <!-- Logo & Titre -->
-        <div class="flex items-center gap-2 shrink-0">
+        <div class="flex items-center gap-2.5 shrink-0">
           <div id="app-logo-badge" class="app-logo-badge w-8 h-8 rounded-2xl flex items-center justify-center text-white font-black text-sm transition-all duration-300 select-none shadow-md">
             D
           </div>
-          <div>
-            <h1 class="font-bold text-xs sm:text-sm text-white tracking-tight leading-tight">Dev Hub</h1>
-            <p class="text-[9px] text-zinc-500 font-mono hidden sm:block">Contrôle Local & Startpage</p>
+          <div class="hidden sm:block">
+            <h1 class="font-bold text-sm text-white tracking-tight leading-tight">Dev Hub</h1>
+            <p class="text-[9px] text-zinc-500 font-mono">Contrôle Local & Startpage</p>
           </div>
         </div>
 
         <!-- Onglets de Navigation Pleine Page -->
-        <div class="flex items-center bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 text-xs font-semibold shadow-inner shrink-0">
+        <div class="flex items-center bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 text-xs font-semibold shadow-inner overflow-x-auto">
           <button
             data-tab-target="dashboard"
-            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 bg-brand-500 text-white shadow-sm font-bold text-xs"
+            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 bg-brand-500 text-white shadow-sm font-bold text-xs shrink-0 cursor-pointer"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
             <span>Accueil</span>
@@ -98,7 +99,7 @@
 
           <button
             data-tab-target="system"
-            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs"
+            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs shrink-0 cursor-pointer"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
             <span>Système</span>
@@ -106,7 +107,7 @@
 
           <button
             data-tab-target="docker"
-            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs"
+            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs shrink-0 cursor-pointer"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
             <span>Docker</span>
@@ -114,7 +115,7 @@
 
           <button
             data-tab-target="ollama"
-            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs"
+            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs shrink-0 cursor-pointer"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
             <span>AI Studio</span>
@@ -122,7 +123,7 @@
 
           <button
             data-tab-target="projects"
-            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs"
+            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs shrink-0 cursor-pointer"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
             <span>Projets</span>
@@ -131,7 +132,7 @@
 
           <button
             data-tab-target="rss"
-            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs"
+            class="tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs shrink-0 cursor-pointer"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
             <span>Veille & RSS</span>
@@ -139,94 +140,132 @@
           </button>
         </div>
 
-        <!-- Contrôles d'Apparence & Thèmes (Compact 1 Ligne) -->
-        <div class="flex items-center gap-1.5 shrink-0">
+        <!-- Contrôles Utilitaires Droite (Compact, Épuré & Élégant) -->
+        <div class="flex items-center gap-2 shrink-0 relative">
           
-          <!-- Sélecteur d'Ambiance / Expérience (Standard, Code, Lecture, Performance) -->
-          <div class="flex items-center bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 text-xs font-semibold shadow-inner" title="Ambiance de travail & Typographie">
+          <!-- Menu Déroulant Ambiance & Thème (Pop-over) -->
+          <div class="relative">
             <button
-              data-theme-preset="standard"
-              onclick="window.setAppThemePreset('standard')"
-              class="theme-preset-btn px-2 py-1 rounded-xl flex items-center gap-1 transition-all text-xs cursor-pointer"
-              title="Thème Standard (Équilibré & Polyvalent)"
+              id="theme-dropdown-trigger"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-zinc-700 text-xs font-semibold transition-all shadow-inner cursor-pointer group"
+              title="Personnaliser l'apparence et le thème"
             >
-              <span class="text-xs">🔷</span>
-              <span class="hidden xl:inline text-[10px]">Standard</span>
+              <span id="theme-active-icon" class="text-xs">💻</span>
+              <span id="theme-active-name" class="hidden md:inline text-[11px] text-zinc-300 font-medium">Code</span>
+              <svg class="w-3 h-3 text-zinc-500 group-hover:text-zinc-300 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </button>
 
-            <button
-              data-theme-preset="code"
-              onclick="window.setAppThemePreset('code')"
-              class="theme-preset-btn px-2 py-1 rounded-xl flex items-center gap-1 transition-all text-xs cursor-pointer"
-              title="Thème Code & IDE (Typographie Monospace)"
+            <!-- Panneau Flottant Dropdown Ambiance & Thème -->
+            <div
+              id="theme-dropdown-menu"
+              class="hidden absolute right-0 top-full mt-2 w-64 p-3 rounded-3xl bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 shadow-2xl z-50 space-y-3 animate-fade-in"
             >
-              <span class="text-xs">💻</span>
-              <span class="hidden xl:inline text-[10px]">Code</span>
-            </button>
+              <!-- Section Mode Lumineux -->
+              <div class="space-y-1.5">
+                <label class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider block px-1">Mode d'affichage</label>
+                <div class="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-zinc-950/80 border border-zinc-800/80">
+                  <button
+                    data-theme-btn="system"
+                    class="theme-toggle-btn p-1.5 rounded-xl flex items-center justify-center gap-1 text-[11px] transition-all cursor-pointer"
+                    title="Thème Système (Suit l'OS)"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    <span>Auto</span>
+                  </button>
+                  <button
+                    data-theme-btn="light"
+                    class="theme-toggle-btn p-1.5 rounded-xl flex items-center justify-center gap-1 text-[11px] transition-all cursor-pointer"
+                    title="Mode Clair"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                    <span>Clair</span>
+                  </button>
+                  <button
+                    data-theme-btn="dark"
+                    class="theme-toggle-btn p-1.5 rounded-xl flex items-center justify-center gap-1 text-[11px] transition-all cursor-pointer"
+                    title="Mode Sombre"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                    <span>Sombre</span>
+                  </button>
+                </div>
+              </div>
 
-            <button
-              data-theme-preset="reading"
-              onclick="window.setAppThemePreset('reading')"
-              class="theme-preset-btn px-2 py-1 rounded-xl flex items-center gap-1 transition-all text-xs cursor-pointer"
-              title="Thème Lecture & Sérénité (Typographie Sérif Ambrée)"
-            >
-              <span class="text-xs">📖</span>
-              <span class="hidden xl:inline text-[10px]">Lecture</span>
-            </button>
+              <!-- Section Ambiance & Typographie -->
+              <div class="space-y-1.5 pt-1 border-t border-zinc-800/80">
+                <label class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider block px-1">Ambiance de travail</label>
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button
+                    data-theme-preset="standard"
+                    class="theme-preset-btn p-2 rounded-2xl flex items-center gap-2 border border-zinc-800/80 hover:border-zinc-700 text-left transition-all text-xs cursor-pointer"
+                  >
+                    <span class="text-base">🔷</span>
+                    <div class="min-w-0">
+                      <span class="font-bold text-white block text-[11px]">Standard</span>
+                      <span class="text-[9px] text-zinc-400 block truncate">Équilibré</span>
+                    </div>
+                  </button>
 
-            <button
-              data-theme-preset="performance"
-              onclick="window.setAppThemePreset('performance')"
-              class="theme-preset-btn px-2 py-1 rounded-xl flex items-center gap-1 transition-all text-xs cursor-pointer"
-              title="Thème Performance & Cyber (Monitoring Néon)"
-            >
-              <span class="text-xs">⚡</span>
-              <span class="hidden xl:inline text-[10px]">Perfs</span>
-            </button>
+                  <button
+                    data-theme-preset="code"
+                    class="theme-preset-btn p-2 rounded-2xl flex items-center gap-2 border border-zinc-800/80 hover:border-zinc-700 text-left transition-all text-xs cursor-pointer"
+                  >
+                    <span class="text-base">💻</span>
+                    <div class="min-w-0">
+                      <span class="font-bold text-white block text-[11px]">Code IDE</span>
+                      <span class="text-[9px] text-zinc-400 block truncate">Monospace</span>
+                    </div>
+                  </button>
+
+                  <button
+                    data-theme-preset="reading"
+                    class="theme-preset-btn p-2 rounded-2xl flex items-center gap-2 border border-zinc-800/80 hover:border-zinc-700 text-left transition-all text-xs cursor-pointer"
+                  >
+                    <span class="text-base">📖</span>
+                    <div class="min-w-0">
+                      <span class="font-bold text-white block text-[11px]">Lecture</span>
+                      <span class="text-[9px] text-zinc-400 block truncate">Sérif ambré</span>
+                    </div>
+                  </button>
+
+                  <button
+                    data-theme-preset="performance"
+                    class="theme-preset-btn p-2 rounded-2xl flex items-center gap-2 border border-zinc-800/80 hover:border-zinc-700 text-left transition-all text-xs cursor-pointer"
+                  >
+                    <span class="text-base">⚡</span>
+                    <div class="min-w-0">
+                      <span class="font-bold text-white block text-[11px]">Performance</span>
+                      <span class="text-[9px] text-zinc-400 block truncate">Cyberpunk</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <!-- Sélecteur de Mode Lumineux (Système, Clair, Sombre) -->
-          <div class="flex items-center bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 text-xs font-semibold shadow-inner">
-            <button
-              data-theme-btn="system"
-              onclick="window.setAppThemeMode('system')"
-              class="theme-toggle-btn p-1.5 rounded-xl flex items-center justify-center transition-all text-xs cursor-pointer"
-              title="Thème Système (Suit les réglages de votre OS)"
-            >
-              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-            </button>
-
-            <button
-              data-theme-btn="light"
-              onclick="window.setAppThemeMode('light')"
-              class="theme-toggle-btn p-1.5 rounded-xl flex items-center justify-center transition-all text-xs cursor-pointer"
-              title="Mode Clair"
-            >
-              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-            </button>
-
-            <button
-              data-theme-btn="dark"
-              onclick="window.setAppThemeMode('dark')"
-              class="theme-toggle-btn p-1.5 rounded-xl flex items-center justify-center transition-all text-xs cursor-pointer"
-              title="Mode Sombre"
-            >
-              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
-            </button>
-          </div>
+          <!-- Bouton Bascule Rapide Clair/Sombre (1-Clic) -->
+          <button
+            id="theme-quick-mode-btn"
+            class="p-2 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white transition-all shadow-inner cursor-pointer"
+            title="Basculer Mode Clair / Sombre"
+          >
+            <svg id="theme-quick-mode-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+            </svg>
+          </button>
 
           <!-- Bouton Synchronisation Cloud Turso (Multi-PC) -->
           <button
             id="sync-modal-btn"
             onclick="window.syncManager?.openModal()"
-            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-brand-500/50 text-xs font-semibold transition-all shadow-inner group cursor-pointer"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-brand-500/50 text-xs font-semibold transition-all shadow-inner group cursor-pointer"
             title="Synchronisation Multi-PC (Turso Cloud)"
           >
             <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-zinc-600"></span>
             <svg id="sync-icon" class="w-3.5 h-3.5 text-zinc-400 group-hover:text-brand-400 transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
             </svg>
-            <span id="sync-btn-label" class="hidden md:inline text-[11px] text-zinc-300 font-medium">Sync</span>
+            <span id="sync-btn-label" class="text-[11px] text-zinc-300 font-medium">Turso</span>
           </button>
 
         </div>

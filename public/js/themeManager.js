@@ -16,6 +16,20 @@ class ThemeManager {
       }
     });
 
+    this.dropdownTrigger = document.getElementById('theme-dropdown-trigger');
+    this.dropdownMenu = document.getElementById('theme-dropdown-menu');
+    this.quickModeBtn = document.getElementById('theme-quick-mode-btn');
+    this.quickModeIcon = document.getElementById('theme-quick-mode-icon');
+    this.activeIconEl = document.getElementById('theme-active-icon');
+    this.activeNameEl = document.getElementById('theme-active-name');
+
+    this.presets = {
+      standard: { name: 'Standard', icon: '🔷', color: '#6366f1' },
+      code: { name: 'Code', icon: '💻', color: '#10b981' },
+      reading: { name: 'Lecture', icon: '📖', color: '#d97706' },
+      performance: { name: 'Perfs', icon: '⚡', color: '#ec4899' }
+    };
+
     this.bindEvents();
     this.applyTheme();
     this.syncFromBackend();
@@ -30,7 +44,6 @@ class ThemeManager {
         const hasLocalPreset = localStorage.getItem('devhub_theme_preset') || localStorage.getItem('mac_theme_preset');
         let changed = false;
 
-        // Ne synchroniser depuis SQLite que si aucun choix local n'est stocké
         if (!hasLocalMode && settings.theme_mode && settings.theme_mode !== this.currentMode) {
           this.currentMode = settings.theme_mode;
           localStorage.setItem('devhub_theme_mode', this.currentMode);
@@ -51,7 +64,36 @@ class ThemeManager {
   }
 
   bindEvents() {
-    // Boutons de mode lumineux (Système, Clair, Sombre)
+    // 1. Bouton ouverture / fermeture dropdown d'ambiance
+    if (this.dropdownTrigger && this.dropdownMenu) {
+      this.dropdownTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.dropdownMenu.classList.toggle('hidden');
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!this.dropdownMenu.contains(e.target) && !this.dropdownTrigger.contains(e.target)) {
+          this.dropdownMenu.classList.add('hidden');
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          this.dropdownMenu.classList.add('hidden');
+        }
+      });
+    }
+
+    // 2. Bouton bascule rapide Clair/Sombre (1-Clic)
+    if (this.quickModeBtn) {
+      this.quickModeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const nextMode = this.currentMode === 'dark' ? 'light' : 'dark';
+        this.setMode(nextMode);
+      });
+    }
+
+    // 3. Boutons de mode lumineux (Système, Clair, Sombre)
     document.querySelectorAll('button[data-theme-btn]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -60,7 +102,7 @@ class ThemeManager {
       });
     });
 
-    // Boutons de preset d'ambiance (Standard, Code, Lecture, Performance)
+    // 4. Boutons de preset d'ambiance (Standard, Code, Lecture, Performance)
     document.querySelectorAll('button[data-theme-preset]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -76,7 +118,6 @@ class ThemeManager {
     localStorage.setItem('devhub_theme_mode', mode);
     this.applyTheme();
 
-    // Persistance SQLite partagée
     fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -90,7 +131,6 @@ class ThemeManager {
     localStorage.setItem('devhub_theme_preset', preset);
     this.applyTheme();
 
-    // Persistance SQLite partagée
     fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -105,7 +145,7 @@ class ThemeManager {
     const root = document.documentElement;
     const body = document.body;
 
-    // 1. Appliquer le mode Clair / Sombre sur HTML et BODY
+    // 1. Appliquer le mode Clair / Sombre
     if (isDark) {
       root.classList.add('dark');
       root.classList.remove('light');
@@ -122,52 +162,61 @@ class ThemeManager {
       }
     }
 
-    // 2. Appliquer le Preset d'Ambiance sur HTML et BODY
+    // 2. Appliquer le Preset d'Ambiance
     root.setAttribute('data-theme-preset', this.currentPreset);
     if (body) {
       body.setAttribute('data-theme-preset', this.currentPreset);
     }
 
-    // 3. Mettre à jour l'état visuel STRICTEMENT des boutons de Mode (balises <button>)
+    // 3. Mettre à jour le bouton déclencheur de thème dans le header
+    const activeInfo = this.presets[this.currentPreset] || this.presets.standard;
+    if (this.activeIconEl) this.activeIconEl.textContent = activeInfo.icon;
+    if (this.activeNameEl) this.activeNameEl.textContent = activeInfo.name;
+
+    // 4. Mettre à jour l'icône du basculeur rapide Clair/Sombre
+    if (this.quickModeIcon) {
+      if (isDark) {
+        this.quickModeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>`;
+        if (this.quickModeBtn) this.quickModeBtn.title = "Passer en Mode Clair";
+      } else {
+        this.quickModeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>`;
+        if (this.quickModeBtn) this.quickModeBtn.title = "Passer en Mode Sombre";
+      }
+    }
+
+    // 5. Mettre à jour l'état visuel des boutons de Mode
     document.querySelectorAll('button[data-theme-btn]').forEach(btn => {
       const mode = btn.getAttribute('data-theme-btn');
       const isActive = mode === this.currentMode;
 
       if (isActive) {
-        btn.className = 'theme-toggle-btn p-1.5 rounded-xl flex items-center justify-center bg-brand-500 text-white shadow-sm font-bold transition-all text-xs cursor-pointer';
+        btn.className = 'theme-toggle-btn p-1.5 rounded-xl flex items-center justify-center gap-1 bg-brand-500 text-white shadow-sm font-bold transition-all text-xs cursor-pointer';
       } else {
-        btn.className = 'theme-toggle-btn p-1.5 rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-all font-semibold text-xs cursor-pointer';
+        btn.className = 'theme-toggle-btn p-1.5 rounded-xl flex items-center justify-center gap-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-all font-medium text-xs cursor-pointer';
       }
     });
 
-    // 4. Mettre à jour l'état visuel STRICTEMENT des boutons de Preset (balises <button>)
+    // 6. Mettre à jour l'état visuel des boutons de Preset
     document.querySelectorAll('button[data-theme-preset]').forEach(btn => {
       const preset = btn.getAttribute('data-theme-preset');
       const isActive = preset === this.currentPreset;
 
       if (isActive) {
-        btn.className = 'theme-preset-btn px-2 py-1 rounded-xl flex items-center gap-1 bg-brand-500 text-white shadow-sm font-bold transition-all text-xs cursor-pointer';
+        btn.className = 'theme-preset-btn p-2 rounded-2xl flex items-center gap-2 bg-brand-500/20 border border-brand-500/50 text-brand-300 shadow-sm font-bold transition-all text-xs cursor-pointer';
       } else {
-        btn.className = 'theme-preset-btn px-2 py-1 rounded-xl flex items-center gap-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-all font-medium text-xs cursor-pointer';
+        btn.className = 'theme-preset-btn p-2 rounded-2xl flex items-center gap-2 border border-zinc-800/80 hover:border-zinc-700 text-zinc-300 hover:text-white transition-all text-xs cursor-pointer';
       }
     });
 
-    // 5. Mettre à jour la Favicon du navigateur selon le Preset actif
-    const themeColors = {
-      standard: '#6366f1',
-      code: '#10b981',
-      reading: '#d97706',
-      performance: '#ec4899'
-    };
-    const activeColor = themeColors[this.currentPreset] || '#6366f1';
+    // 7. Mettre à jour la Favicon
     const favicon = document.querySelector("link[rel='icon']");
     if (favicon) {
-      favicon.href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${encodeURIComponent(activeColor)}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2'/><path d='M9 3v18'/><path d='m14 9 3 3-3 3'/></svg>`;
+      favicon.href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='${encodeURIComponent(activeInfo.color)}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='3' rx='2'/><path d='M9 3v18'/><path d='m14 9 3 3-3 3'/></svg>`;
     }
   }
 }
 
-// Helpers globaux pour déclenchement direct
+// Helpers globaux
 window.setAppThemeMode = (mode) => {
   if (window.themeManager) {
     window.themeManager.setMode(mode);
@@ -186,5 +235,4 @@ window.setAppThemePreset = (preset) => {
   }
 };
 
-// Initialisation globale
 window.ThemeManager = ThemeManager;
