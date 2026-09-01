@@ -1,11 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { exec } from 'node:child_process';
+import { exec, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import dbService from './dbService.js';
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 /**
  * Récupère les chemins configurés par l'utilisateur ou initialise avec les dossiers par défaut
@@ -73,6 +74,26 @@ export async function removeScannedPath(targetPath) {
 }
 
 /**
+ * Exécute des promesses avec un niveau de concurrence contrôlé
+ */
+async function mapConcurrent(items, limit, fn) {
+  const results = [];
+  const executing = [];
+  for (const item of items) {
+    const p = Promise.resolve().then(() => fn(item));
+    results.push(p);
+    if (limit <= items.length) {
+      const e = p.then(() => executing.splice(executing.indexOf(e), 1));
+      executing.push(e);
+      if (executing.length >= limit) {
+        await Promise.race(executing);
+      }
+    }
+  }
+  return Promise.all(results);
+}
+
+/**
  * Scanne les répertoires et extrait le statut Git complet de chaque projet
  */
 export async function scanProjects() {
@@ -89,18 +110,15 @@ export async function scanProjects() {
     discoveredGitDirs.add(selfDir);
   }
 
-  const projects = [];
-
-  for (const repoPath of discoveredGitDirs) {
+  const repoList = Array.from(discoveredGitDirs);
+  const projects = (await mapConcurrent(repoList, 6, async (repoPath) => {
     try {
-      const projectInfo = await inspectGitRepository(repoPath);
-      if (projectInfo) {
-        projects.push(projectInfo);
-      }
+      return await inspectGitRepository(repoPath);
     } catch (err) {
       console.warn(`⚠️ [Git Hub] Erreur analyse ${repoPath}:`, err.message);
+      return null;
     }
-  }
+  })).filter(Boolean);
 
   // Tri : Projets avec modifications non enregistrées en premier, puis alphabétique
   projects.sort((a, b) => {
@@ -131,7 +149,17 @@ function findGitRepositories(dir, currentDepth, maxDepth, results) {
       if (entry.isDirectory()) {
         const name = entry.name;
         // Ignorer les dossiers lourds ou cachés
-        if (name.startsWith('.') || name === 'node_modules' || name === 'vendor' || name === 'dist' || name === 'build' || name === 'target') {
+        if (
+          name.startsWith('.') || 
+          name === 'node_modules' || 
+          name === 'vendor' || 
+          name === 'dist' || 
+          name === 'build' || 
+          name === 'target' ||
+          name === '__pycache__' ||
+          name === '.venv' ||
+          name === 'venv'
+        ) {
           continue;
         }
         findGitRepositories(path.join(dir, name), currentDepth + 1, maxDepth, results);
@@ -159,7 +187,11 @@ async function inspectGitRepository(repoPath) {
 
   // 1. Statut Git (Porcelain v1 + Branch)
   try {
-    const { stdout } = await execAsync('git status --porcelain=v1 -b', { cwd: repoPath });
+    const { stdout } = await execFileAsync('git', [
+      '-C', repoPath,
+      '-c', 'safe.directory=*',
+      'status', '--porcelain=v1', '-b'
+    ], { timeout: 8000 });
     const lines = stdout.trim().split('\n');
 
     if (lines.length > 0 && lines[0].startsWith('##')) {
@@ -189,12 +221,25 @@ async function inspectGitRepository(repoPath) {
 
     isClean = (modifiedCount === 0 && untrackedCount === 0 && stagedCount === 0);
   } catch (err) {
-    branch = 'detached';
+    try {
+      const { stdout } = await execFileAsync('git', [
+        '-C', repoPath,
+        '-c', 'safe.directory=*',
+        'branch', '--show-current'
+      ], { timeout: 4000 });
+      branch = stdout.trim() || 'detached';
+    } catch {
+      branch = 'detached';
+    }
   }
 
   // 2. Dernier Commit
   try {
-    const { stdout } = await execAsync('git log -1 --format="%h|%s|%an|%cr|%cI"', { cwd: repoPath });
+    const { stdout } = await execFileAsync('git', [
+      '-C', repoPath,
+      '-c', 'safe.directory=*',
+      'log', '-1', '--format=%h|%s|%an|%cr|%cI'
+    ], { timeout: 4000 });
     if (stdout.trim()) {
       const [hash, subject, author, relativeTime, isoDate] = stdout.trim().split('|');
       lastCommit = { hash, subject, author, relativeTime, isoDate };
@@ -203,7 +248,11 @@ async function inspectGitRepository(repoPath) {
 
   // 3. Remote URL & Détection Web URL (GitHub, GitLab, Bitbucket)
   try {
-    const { stdout } = await execAsync('git config --get remote.origin.url || true', { cwd: repoPath });
+    const { stdout } = await execFileAsync('git', [
+      '-C', repoPath,
+      '-c', 'safe.directory=*',
+      'config', '--get', 'remote.origin.url'
+    ], { timeout: 3000 });
     remoteUrl = stdout.trim();
     if (remoteUrl) {
       webUrl = formatGitWebUrl(remoteUrl);
@@ -315,7 +364,7 @@ export async function openInEditor(projectPath, editor = 'vscode') {
       if (platform === 'darwin') {
         cmd = `open -a Terminal "${p}"`;
       } else if (platform === 'win32') {
-        cmd = `start wt.exe -d "${p}" 2>nul || start cmd.exe /K "cd /d ${p}"`;
+        cmd = `start wt.exe -d "${p}" 2>nul || powershell -NoProfile -Command "Start-Process powershell -WorkingDirectory '${p.replace(/'/g, "''")}'"`;
       } else {
         cmd = `x-terminal-emulator --working-directory="${p}" || gnome-terminal --working-directory="${p}"`;
       }
