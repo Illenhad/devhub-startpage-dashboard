@@ -1,7 +1,8 @@
-import { exec, execFile } from 'node:child_process';
+import { exec, execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import os from 'node:os';
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import path from 'node:path';
 
 const execAsync = promisify(exec);
@@ -745,13 +746,41 @@ export async function openFileLocation(targetPath) {
     throw new Error('Chemin invalide');
   }
 
+  const normalizedPath = path.normalize(targetPath);
+
   if (isMac) {
-    await execFileAsync('open', ['-R', targetPath], { timeout: 3000 });
+    await execFileAsync('open', ['-R', normalizedPath], { timeout: 3000 });
   } else if (isWindows) {
-    const normalizedPath = path.normalize(targetPath);
-    await execFileAsync('explorer.exe', [`/select,${normalizedPath}`], { timeout: 3000 });
+    try {
+      const exists = fsSync.existsSync(normalizedPath);
+      const isDirectory = exists && fsSync.statSync(normalizedPath).isDirectory();
+      
+      const args = (exists && !isDirectory)
+        ? [`/select,${normalizedPath}`]
+        : [isDirectory ? normalizedPath : path.dirname(normalizedPath)];
+
+      const child = spawn('explorer.exe', args, {
+        detached: true,
+        stdio: 'ignore'
+      });
+      child.unref();
+    } catch {
+      try {
+        await execAsync(`explorer.exe /select,"${normalizedPath}"`);
+      } catch (err) {
+        if (err.code !== 1) {
+          // Si la sélection échoue, ouvrir le dossier parent
+          const parentDir = path.dirname(normalizedPath);
+          try {
+            await execAsync(`explorer.exe "${parentDir}"`);
+          } catch (e) {
+            if (e.code !== 1) throw e;
+          }
+        }
+      }
+    }
   } else if (isLinux) {
-    const dir = path.dirname(targetPath);
+    const dir = path.dirname(normalizedPath);
     await execFileAsync('xdg-open', [dir], { timeout: 3000 });
   }
 

@@ -339,13 +339,23 @@ export async function openInEditor(projectPath, editor = 'vscode') {
     console.log(`🚀 [Git Hub] Projet ${path.basename(p)} ouvert avec ${editor}`);
     return { success: true, message: `Projet ouvert avec ${editor}` };
   } catch (err) {
+    // Sous Windows, explorer.exe retourne le code 1 même en cas de succès
+    if (platform === 'win32' && (editor === 'explorer' || editor === 'finder' || err.code === 1)) {
+      console.log(`🚀 [Git Hub] Projet ${path.basename(p)} ouvert avec ${editor}`);
+      return { success: true, message: `Projet ouvert avec ${editor}` };
+    }
+
     // Si l'éditeur spécifique n'est pas installé dans le PATH, fallback sur le Finder/Explorateur
     if (editor !== 'finder' && editor !== 'explorer') {
       try {
         const fallbackCmd = platform === 'darwin' ? `open "${p}"` : platform === 'win32' ? `explorer.exe "${p}"` : `xdg-open "${p}"`;
         await execAsync(fallbackCmd);
         return { success: true, message: `Commande '${editor}' introuvable, dossier ouvert dans le gestionnaire de fichiers.` };
-      } catch {}
+      } catch (fErr) {
+        if (platform === 'win32' && (fErr.code === 1 || !fErr.code)) {
+          return { success: true, message: `Commande '${editor}' introuvable, dossier ouvert dans l'Explorateur Windows.` };
+        }
+      }
     }
     throw new Error(`Impossible de lancer ${editor} : ${err.message}`);
   }

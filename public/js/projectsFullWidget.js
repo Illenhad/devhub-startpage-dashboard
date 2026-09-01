@@ -235,7 +235,8 @@ class ProjectsFullWidget {
           <div class="flex items-center justify-between gap-1 pt-1">
             <div class="flex items-center gap-1.5">
               <button
-                onclick="window.projectsFullWidget.open('${p.path.replace(/'/g, "\\'")}', 'vscode')"
+                data-path="${this.escapeHtml(p.path)}"
+                onclick="window.projectsFullWidget.open(this.dataset.path, 'vscode')"
                 class="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-sky-500/20 hover:text-sky-300 text-zinc-200 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
                 title="Ouvrir dans VS Code"
               >
@@ -244,7 +245,8 @@ class ProjectsFullWidget {
               </button>
 
               <button
-                onclick="window.projectsFullWidget.open('${p.path.replace(/'/g, "\\'")}', 'terminal')"
+                data-path="${this.escapeHtml(p.path)}"
+                onclick="window.projectsFullWidget.open(this.dataset.path, 'terminal')"
                 class="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
                 title="Ouvrir dans le Terminal"
               >
@@ -253,7 +255,8 @@ class ProjectsFullWidget {
               </button>
 
               <button
-                onclick="window.projectsFullWidget.open('${p.path.replace(/'/g, "\\'")}', 'finder')"
+                data-path="${this.escapeHtml(p.path)}"
+                onclick="window.projectsFullWidget.open(this.dataset.path, 'finder')"
                 class="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-xs flex items-center gap-1 transition-all cursor-pointer"
                 title="Révéler dans le Finder / Explorateur"
               >
@@ -324,7 +327,8 @@ class ProjectsFullWidget {
       <div class="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs">
         <span class="font-mono text-zinc-200 truncate mr-2">${p}</span>
         <button
-          onclick="window.projectsFullWidget.removePath('${p.replace(/'/g, "\\'")}')"
+          data-path="${this.escapeHtml(p)}"
+          onclick="window.projectsFullWidget.removePath(this.dataset.path)"
           class="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
           title="Supprimer ce dossier"
         >
@@ -332,6 +336,16 @@ class ProjectsFullWidget {
         </button>
       </div>
     `).join('');
+  }
+
+  escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   async addPath() {

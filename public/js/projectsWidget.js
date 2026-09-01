@@ -143,21 +143,24 @@ class ProjectsWidget {
               <!-- Lanceurs Rapides (VS Code, Terminal, Finder/Explorateur) -->
               <div class="flex items-center gap-1 shrink-0">
                 <button
-                  onclick="window.projectsWidget.open('${p.path.replace(/'/g, "\\'")}', 'vscode')"
+                  data-path="${this.escapeHtml(p.path)}"
+                  onclick="window.projectsWidget.open(this.dataset.path, 'vscode')"
                   class="p-1 rounded-lg bg-zinc-800 hover:bg-sky-500/20 hover:text-sky-300 text-zinc-300 transition-colors cursor-pointer"
                   title="Ouvrir dans VS Code"
                 >
                   💻
                 </button>
                 <button
-                  onclick="window.projectsWidget.open('${p.path.replace(/'/g, "\\'")}', 'terminal')"
+                  data-path="${this.escapeHtml(p.path)}"
+                  onclick="window.projectsWidget.open(this.dataset.path, 'terminal')"
                   class="p-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors cursor-pointer"
                   title="Ouvrir dans le Terminal"
                 >
                   📟
                 </button>
                 <button
-                  onclick="window.projectsWidget.open('${p.path.replace(/'/g, "\\'")}', 'finder')"
+                  data-path="${this.escapeHtml(p.path)}"
+                  onclick="window.projectsWidget.open(this.dataset.path, 'finder')"
                   class="p-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors cursor-pointer"
                   title="Révéler dans le Finder / Explorateur"
                 >
@@ -182,6 +185,16 @@ class ProjectsWidget {
         </div>
       </div>
     `;
+  }
+
+  escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   async open(projectPath, editor) {

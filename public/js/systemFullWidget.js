@@ -427,7 +427,8 @@ class SystemFullWidget {
           </td>
           <td class="py-2.5 px-3 text-right">
             <button
-              onclick="window.systemFullWidget.revealInFinder('${f.path.replace(/'/g, "\\'")}', this)"
+              data-filepath="${this.escapeHtml(f.path)}"
+              onclick="window.systemFullWidget.revealInFinder(this.dataset.filepath, this)"
               class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 transition-all flex items-center gap-1 ml-auto cursor-pointer"
               title="${revealTitle}"
             >
@@ -438,6 +439,16 @@ class SystemFullWidget {
         </tr>
       `;
     }).join('');
+  }
+
+  escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   async revealInFinder(filePath, btn) {
