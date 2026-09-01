@@ -1,8 +1,9 @@
-import { exec, execSync } from 'node:child_process';
+import { exec, execFile, execSync } from 'node:child_process';
 import os from 'node:os';
 import { promisify } from 'node:util';
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 // Dictionnaire des services et ports connus
 const KNOWN_PORTS = {
@@ -122,68 +123,123 @@ async function getUnixPorts() {
 }
 
 /**
+ * Fallback Windows via netstat si PowerShell est indisponible
+ */
+async function getWindowsPortsFallback() {
+  try {
+    const { stdout } = await execAsync('netstat -ano -p tcp', { timeout: 4000 });
+    const lines = stdout.trim().split('\n');
+    const rawPorts = [];
+    const seen = new Set();
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line.includes('LISTENING')) continue;
+
+      const parts = line.split(/\s+/);
+      if (parts.length >= 5) {
+        const localAddr = parts[1];
+        const pid = parseInt(parts[parts.length - 1], 10);
+        const portMatch = localAddr.match(/:(\d+)$/);
+
+        if (portMatch && !isNaN(pid)) {
+          const port = parseInt(portMatch[1], 10);
+          const key = `${port}-${pid}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            rawPorts.push({
+              port,
+              pid,
+              command: 'Processus',
+              user: '',
+              address: localAddr.substring(0, localAddr.lastIndexOf(':')) || '0.0.0.0'
+            });
+          }
+        }
+      }
+    }
+    return rawPorts;
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Parsing sous Windows via PowerShell
  */
 async function getWindowsPorts() {
   const psScript = `
+    $procTable = @{}
+    Get-Process -ErrorAction SilentlyContinue | ForEach-Object { $procTable[[int]$_.Id] = $_.ProcessName }
     Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | ForEach-Object {
-      $p = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue
+      $owningPid = [int]$_.OwningProcess
+      $pName = if ($procTable.ContainsKey($owningPid)) { $procTable[$owningPid] } else { 'System' }
       [PSCustomObject]@{
         port = $_.LocalPort
-        pid = $_.OwningProcess
-        command = if ($p) { $p.ProcessName } else { "System" }
-        user = if ($p) { $p.UserName } else { "" }
+        pid = $owningPid
+        command = $pName
+        user = ''
         address = $_.LocalAddress
       }
     } | ConvertTo-Json -Compress
   `;
 
+  let parsed = [];
+
   try {
-    const { stdout } = await execAsync(`powershell -NoProfile -NonInteractive -Command "${psScript.replace(/\n/g, ' ')}"`);
-    if (!stdout.trim()) return [];
+    const { stdout } = await execFileAsync('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      psScript
+    ], { timeout: 6000 });
 
-    let parsed = JSON.parse(stdout.trim());
-    if (!Array.isArray(parsed)) parsed = [parsed];
-
-    const currentPid = process.pid;
-    const seen = new Set();
-    const ports = [];
-
-    for (const item of parsed) {
-      const port = parseInt(item.port, 10);
-      const pid = parseInt(item.pid, 10);
-      if (!port || isNaN(port)) continue;
-
-      const key = `${port}-${pid}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-
-      const known = KNOWN_PORTS[port] || null;
-      const isDevHub = pid === currentPid || port === 3333;
-      const command = item.command || 'Processus';
-
-      ports.push({
-        port,
-        pid,
-        command,
-        user: item.user || '',
-        protocol: 'TCP',
-        address: item.address || '0.0.0.0',
-        url: `http://localhost:${port}`,
-        serviceName: known?.name || cleanProcessName(command),
-        icon: known?.icon || getProcessIcon(command),
-        category: known?.category || 'Processus',
-        isDevHub,
-        canKill: !isDevHub && pid > 4
-      });
+    if (stdout.trim()) {
+      const res = JSON.parse(stdout.trim());
+      parsed = Array.isArray(res) ? res : [res];
     }
-
-    ports.sort((a, b) => a.port - b.port);
-    return ports;
   } catch (err) {
     console.warn('⚠️ [Ports Windows] Erreur PowerShell, fallback netstat:', err.message);
-    return [];
+    parsed = await getWindowsPortsFallback();
   }
+
+  if (!parsed.length) return [];
+
+  const currentPid = process.pid;
+  const seen = new Set();
+  const ports = [];
+
+  for (const item of parsed) {
+    const port = parseInt(item.port, 10);
+    const pid = parseInt(item.pid, 10);
+    if (!port || isNaN(port)) continue;
+
+    const key = `${port}-${pid}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const known = KNOWN_PORTS[port] || null;
+    const isDevHub = pid === currentPid || port === 3333;
+    const command = item.command || 'Processus';
+
+    ports.push({
+      port,
+      pid,
+      command,
+      user: item.user || '',
+      protocol: 'TCP',
+      address: item.address || '0.0.0.0',
+      url: `http://localhost:${port}`,
+      serviceName: known?.name || cleanProcessName(command),
+      icon: known?.icon || getProcessIcon(command),
+      category: known?.category || 'Processus',
+      isDevHub,
+      canKill: !isDevHub && pid > 4
+    });
+  }
+
+  ports.sort((a, b) => a.port - b.port);
+  return ports;
 }
 
 /**
@@ -203,7 +259,16 @@ export async function killProcess(pid, port = null) {
   const platform = os.platform();
 
   if (platform === 'win32') {
-    await execAsync(`powershell -NoProfile -Command "Stop-Process -Id ${pid} -Force"`);
+    try {
+      await execAsync(`taskkill /F /PID ${pid}`);
+    } catch {
+      await execFileAsync('powershell.exe', [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        `Stop-Process -Id ${pid} -Force`
+      ]);
+    }
   } else {
     // macOS et Linux
     await execAsync(`kill -9 ${pid}`);

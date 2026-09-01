@@ -6,6 +6,8 @@ package-lock.json.bak
 data/*.sqlite*
 data/*.log
 data/*.err
+data/.tmp*
+data/*.tmp*
 
 # Fichiers de logs
 *.log
