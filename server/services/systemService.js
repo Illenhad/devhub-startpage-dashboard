@@ -532,6 +532,7 @@ async function getUnixProcesses() {
 let cachedWindowsProcesses = null;
 let lastWindowsProcessFetch = 0;
 const WINDOWS_PROCESS_CACHE_TTL = 2500;
+let previousWindowsCpuSamples = new Map();
 
 /**
  * Fallback rapide Processus Windows via tasklist
@@ -584,7 +585,7 @@ async function getWindowsProcessesFallback() {
 }
 
 /**
- * Processus Windows : PowerShell Get-Process avec Fallback tasklist & Cache
+ * Processus Windows : Compteurs de performance WMI Win32_PerfFormattedData_PerfProc_Process avec Fallback tasklist & Cache
  */
 async function getWindowsProcesses() {
   const now = Date.now();
@@ -597,8 +598,8 @@ async function getWindowsProcesses() {
       '-NoProfile',
       '-NonInteractive',
       '-Command',
-      'Get-Process | Select-Object Id,ProcessName,CPU,WorkingSet64 | ConvertTo-Json -Compress'
-    ], { timeout: 7000, maxBuffer: 10 * 1024 * 1024 });
+      'Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | Select-Object IDProcess,Name,PercentProcessorTime,WorkingSetPrivate | ConvertTo-Json -Compress'
+    ], { timeout: 7000, maxBuffer: 15 * 1024 * 1024 });
 
     if (!stdout.trim()) {
       cachedWindowsProcesses = await getWindowsProcessesFallback();
@@ -611,40 +612,45 @@ async function getWindowsProcesses() {
 
     const totalMem = os.totalmem();
     const username = os.userInfo()?.username || 'SYSTEM';
+    const numCores = os.cpus()?.length || 1;
 
-    const processes = parsed.filter(p => p && p.Id).map(p => {
-      const pid = p.Id;
-      const name = p.ProcessName || 'Inconnu';
-      const cpu = p.CPU ? parseFloat(p.CPU.toFixed(1)) : 0;
-      const rssBytes = p.WorkingSet64 || 0;
-      const rssKB = Math.round(rssBytes / 1024);
-      const rssMB = parseFloat((rssBytes / (1024 * 1024)).toFixed(1));
-      const mem = totalMem > 0 ? parseFloat(((rssBytes / totalMem) * 100).toFixed(1)) : 0;
+    const processes = parsed
+      .filter(p => p && p.IDProcess > 0 && p.Name !== '_Total' && p.Name !== 'Idle')
+      .map(p => {
+        const pid = p.IDProcess;
+        const cleanName = p.Name.replace(/#\d+$/, '');
+        const rawCpu = p.PercentProcessorTime || 0;
+        const cpu = parseFloat(Math.min(100, Math.max(0, rawCpu / numCores)).toFixed(1));
+        const rssBytes = p.WorkingSetPrivate || 0;
+        const rssKB = Math.round(rssBytes / 1024);
+        const rssMB = parseFloat((rssBytes / (1024 * 1024)).toFixed(1));
+        const mem = totalMem > 0 ? parseFloat(((rssBytes / totalMem) * 100).toFixed(1)) : 0;
 
-      const rssFormatted = rssMB >= 1024 
-        ? `${(rssMB / 1024).toFixed(2)} Go` 
-        : `${rssMB} Mo`;
+        const rssFormatted = rssMB >= 1024 
+          ? `${(rssMB / 1024).toFixed(2)} Go` 
+          : `${rssMB} Mo`;
 
-      return {
-        pid,
-        user: username,
-        cpu,
-        mem,
-        rssKB,
-        rssMB,
-        rssFormatted,
-        uptime: 'Actif',
-        uptimeSeconds: 0,
-        name,
-        command: name
-      };
-    });
+        return {
+          pid,
+          user: username,
+          cpu,
+          mem,
+          rssKB,
+          rssMB,
+          rssFormatted,
+          uptime: 'Actif',
+          uptimeSeconds: 0,
+          name: cleanName,
+          command: cleanName
+        };
+      });
 
     processes.sort((a, b) => (b.cpu - a.cpu) || (b.rssKB - a.rssKB));
     cachedWindowsProcesses = processes;
     lastWindowsProcessFetch = Date.now();
     return processes;
-  } catch {
+  } catch (err) {
+    console.error('Erreur getWindowsProcesses:', err.message);
     cachedWindowsProcesses = await getWindowsProcessesFallback();
     lastWindowsProcessFetch = Date.now();
     return cachedWindowsProcesses;

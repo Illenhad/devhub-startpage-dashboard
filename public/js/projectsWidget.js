@@ -26,10 +26,11 @@ class ProjectsWidget {
   async loadProjects(silent = false) {
     if (this.isLoading) return;
     this.isLoading = true;
+    const startTime = Date.now();
 
     if (!silent && this.refreshBtn) {
-      const svg = this.refreshBtn.querySelector('svg');
-      if (svg) svg.classList.add('animate-spin');
+      const svg = this.refreshBtn.querySelector('svg') || this.refreshBtn;
+      svg.classList.add('animate-spin');
     }
 
     try {
@@ -50,9 +51,11 @@ class ProjectsWidget {
       }
     } finally {
       this.isLoading = false;
-      if (this.refreshBtn) {
-        const svg = this.refreshBtn.querySelector('svg');
-        if (svg) svg.classList.remove('animate-spin');
+      if (!silent && this.refreshBtn) {
+        const svg = this.refreshBtn.querySelector('svg') || this.refreshBtn;
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, 600 - elapsed);
+        setTimeout(() => svg.classList.remove('animate-spin'), remaining);
       }
     }
   }

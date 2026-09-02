@@ -199,8 +199,8 @@ class OllamaWidget {
 
     if (this.statusBadgeEl) {
       this.statusBadgeEl.innerHTML = `
-        <span class="w-1.5 h-1.5 rounded-full bg-zinc-600"></span>
-        <span class="text-[10px] font-semibold text-zinc-400">Inactif</span>
+        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+        <span class="text-[10px] font-semibold text-rose-400">Inactif</span>
       `;
     }
 
