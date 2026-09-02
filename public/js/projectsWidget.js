@@ -89,95 +89,53 @@ class ProjectsWidget {
       return;
     }
 
-    // Affichage synthétique des KPIs + projets récents / modifiés
-    const displayProjects = this.projects.slice(0, 4);
-
     this.contentEl.innerHTML = `
-      <div class="space-y-3">
-        <!-- 3 Badges de Statut Rapides -->
-        <div class="grid grid-cols-3 gap-2 text-center">
-          <div class="p-2 rounded-2xl bg-zinc-900/70 border border-zinc-800/80">
-            <span class="text-[9px] text-zinc-500 font-semibold uppercase block">Dépôts</span>
-            <span class="font-mono text-sm font-bold text-zinc-100 mt-0.5 block">${totalCount}</span>
-          </div>
-
-          <div class="p-2 rounded-2xl bg-zinc-900/70 border border-zinc-800/80">
-            <span class="text-[9px] text-zinc-500 font-semibold uppercase block">Modifiés</span>
-            <span class="font-mono text-sm font-bold ${dirtyProjects.length > 0 ? 'text-amber-400' : 'text-emerald-400'} mt-0.5 block">
-              ${dirtyProjects.length}
-            </span>
-          </div>
-
-          <div class="p-2 rounded-2xl bg-zinc-900/70 border border-zinc-800/80">
-            <span class="text-[9px] text-zinc-500 font-semibold uppercase block">À Synchro</span>
-            <span class="font-mono text-sm font-bold ${syncProjects.length > 0 ? 'text-sky-400' : 'text-zinc-400'} mt-0.5 block">
-              ${syncProjects.length}
-            </span>
-          </div>
-        </div>
-
-        <!-- Liste des Projets Récents / Modifiés -->
-        <div class="space-y-1.5">
-          ${displayProjects.map(p => `
-            <div class="p-2 rounded-2xl bg-zinc-900/80 border border-zinc-800/80 hover:border-zinc-700/80 transition-all flex items-center justify-between gap-2 text-xs group">
-              <div class="flex items-center gap-2 min-w-0">
-                <span class="text-sm shrink-0">${p.tech.icon}</span>
-                <div class="min-w-0">
-                  <div class="flex items-center gap-1.5">
-                    <span class="font-bold text-white truncate text-[11px]">${p.name}</span>
-                    <span class="px-1.5 py-0.2 rounded text-[9px] font-mono ${p.isDirty ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-zinc-800 text-zinc-400'}">
-                      ${p.branch}
-                    </span>
-                    ${p.ahead > 0 ? `<span class="text-[9px] text-sky-400 font-mono">↑${p.ahead}</span>` : ''}
-                    ${p.behind > 0 ? `<span class="text-[9px] text-indigo-400 font-mono">↓${p.behind}</span>` : ''}
-                  </div>
-                  <div class="text-[10px] text-zinc-500 truncate mt-0.5">
-                    ${p.lastCommit ? `${p.lastCommit.subject} (${p.lastCommit.relativeTime})` : p.path}
-                  </div>
-                </div>
-              </div>
-
-              <!-- Lanceurs Rapides (VS Code, Terminal, Finder/Explorateur) -->
-              <div class="flex items-center gap-1 shrink-0">
-                <button
-                  data-path="${this.escapeHtml(p.path)}"
-                  onclick="window.projectsWidget.open(this.dataset.path, 'vscode')"
-                  class="p-1 rounded-lg bg-zinc-800 hover:bg-sky-500/20 hover:text-sky-300 text-zinc-300 transition-colors cursor-pointer"
-                  title="Ouvrir dans VS Code"
-                >
-                  💻
-                </button>
-                <button
-                  data-path="${this.escapeHtml(p.path)}"
-                  onclick="window.projectsWidget.open(this.dataset.path, 'terminal')"
-                  class="p-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors cursor-pointer"
-                  title="Ouvrir dans le Terminal"
-                >
-                  📟
-                </button>
-                <button
-                  data-path="${this.escapeHtml(p.path)}"
-                  onclick="window.projectsWidget.open(this.dataset.path, 'finder')"
-                  class="p-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors cursor-pointer"
-                  title="Révéler dans le Finder / Explorateur"
-                >
-                  📂
-                </button>
-              </div>
+      <div class="space-y-3 flex-1 flex flex-col justify-between">
+        <div class="space-y-3">
+          <!-- 3 Badges de Statut Rapides -->
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="p-2 rounded-2xl bg-zinc-900/70 border border-zinc-800/80">
+              <span class="text-[9px] text-zinc-500 font-semibold uppercase block">Dépôts</span>
+              <span class="font-mono text-sm font-bold text-zinc-100 mt-0.5 block">${totalCount}</span>
             </div>
-          `).join('')}
+
+            <div class="p-2 rounded-2xl bg-zinc-900/70 border border-zinc-800/80">
+              <span class="text-[9px] text-zinc-500 font-semibold uppercase block">Modifiés</span>
+              <span class="font-mono text-sm font-bold ${dirtyProjects.length > 0 ? 'text-amber-400' : 'text-emerald-400'} mt-0.5 block">
+                ${dirtyProjects.length}
+              </span>
+            </div>
+
+            <div class="p-2 rounded-2xl bg-zinc-900/70 border border-zinc-800/80">
+              <span class="text-[9px] text-zinc-500 font-semibold uppercase block">À Synchro</span>
+              <span class="font-mono text-sm font-bold ${syncProjects.length > 0 ? 'text-sky-400' : 'text-zinc-400'} mt-0.5 block">
+                ${syncProjects.length}
+              </span>
+            </div>
+          </div>
+
+          <!-- Ligne d'état de synthèse Git -->
+          <div class="p-2.5 rounded-2xl bg-zinc-900/40 border border-zinc-800/60 flex items-center justify-between text-[11px]">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="text-xs shrink-0">${dirtyProjects.length > 0 ? '📝' : '✨'}</span>
+              <span class="text-zinc-300 truncate">
+                ${dirtyProjects.length > 0 ? `${dirtyProjects.length} projet${dirtyProjects.length > 1 ? 's' : ''} avec modifications` : 'Arbre de travail propre'}
+              </span>
+            </div>
+            <span class="font-mono text-[10px] shrink-0 font-semibold ${dirtyProjects.length > 0 ? 'text-amber-400' : 'text-emerald-400'}">
+              ${dirtyProjects.length > 0 ? 'À valider' : 'À jour'}
+            </span>
+          </div>
         </div>
 
-        <!-- Bas de carte -->
-        <div class="pt-1 flex items-center justify-between text-xs border-t border-zinc-800/60">
-          <span class="text-[10px] text-zinc-500">
-            ${dirtyProjects.length > 0 ? `${dirtyProjects.length} dépôts avec modifications` : 'Tous les dépôts sont synchronisés'}
-          </span>
+        <!-- Bouton Accès aux Projets (Harmonisé) -->
+        <div class="pt-0.5">
           <button
             onclick="window.switchTab && window.switchTab('projects')"
-            class="text-[11px] text-brand-400 hover:text-brand-300 hover:underline font-semibold cursor-pointer"
+            class="w-full py-2 px-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] font-semibold text-zinc-300 hover:text-white flex items-center justify-between transition-all group shadow-sm cursor-pointer"
           >
-            Explorer tous les projets →
+            <span>Explorer tous les projets</span>
+            <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7"/></svg>
           </button>
         </div>
       </div>

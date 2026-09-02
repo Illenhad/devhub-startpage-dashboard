@@ -140,7 +140,7 @@ function detectProjectTechFromFiles(files = []) {
 /**
  * Scan ultra-rapide des dépôts Git situés dans WSL via Python natif Linux (0% surcharge 9P)
  */
-async function scanWslProjectsBatch(distro, linuxPath) {
+async function scanWslProjectsBatch(distro, linuxPath, rootPath) {
   const pyScript = `
 import os, subprocess, json
 
@@ -224,9 +224,14 @@ print(json.dumps(results))
     const rawList = JSON.parse(stdout.trim());
     return rawList.map(r => {
       const uncPath = formatWslUncPath(distro, r.linuxPath);
+      const parentDir = path.dirname(uncPath);
+      const parentName = path.basename(parentDir);
       return {
         name: r.name,
         path: uncPath,
+        rootPath: rootPath || uncPath,
+        parentDir,
+        parentName,
         branch: r.branch,
         isClean: r.isClean,
         isDirty: r.isDirty,
@@ -265,30 +270,32 @@ export async function scanProjects(forceRefresh = false) {
       const rootPaths = await getScannedPaths();
       const discoveredLocalGitDirs = new Set();
       const wslProjects = [];
+      const repoRootMap = new Map();
 
       for (const root of rootPaths) {
         const wslInfo = parseWslPath(root);
         if (wslInfo && os.platform() === 'win32') {
           // Traitement optimisé en batch sous WSL
-          const batchRes = await scanWslProjectsBatch(wslInfo.distro, wslInfo.linuxPath);
+          const batchRes = await scanWslProjectsBatch(wslInfo.distro, wslInfo.linuxPath, root);
           if (batchRes && Array.isArray(batchRes)) {
             wslProjects.push(...batchRes);
             continue;
           }
         }
-        findGitRepositories(root, 0, 2, discoveredLocalGitDirs);
+        findGitRepositories(root, 0, 2, discoveredLocalGitDirs, root, repoRootMap);
       }
 
       // Si le projet DevHub lui-même n'est pas encore dans la liste, l'ajouter
       const selfDir = path.resolve('.');
       if (fs.existsSync(path.join(selfDir, '.git'))) {
         discoveredLocalGitDirs.add(selfDir);
+        repoRootMap.set(selfDir, path.dirname(selfDir));
       }
 
       const localRepoList = Array.from(discoveredLocalGitDirs);
       const localProjects = (await mapConcurrent(localRepoList, 4, async (repoPath) => {
         try {
-          return await inspectGitRepository(repoPath);
+          return await inspectGitRepository(repoPath, repoRootMap.get(repoPath));
         } catch (err) {
           console.warn(`⚠️ [Git Hub] Erreur analyse ${repoPath}:`, err.message);
           return null;
@@ -328,7 +335,7 @@ export async function scanProjects(forceRefresh = false) {
 /**
  * Recherche récursive de dépôts Git (présence d'un dossier .git)
  */
-function findGitRepositories(dir, currentDepth, maxDepth, results) {
+function findGitRepositories(dir, currentDepth, maxDepth, results, rootPath, repoRootMap) {
   if (currentDepth > maxDepth) return;
 
   try {
@@ -336,6 +343,9 @@ function findGitRepositories(dir, currentDepth, maxDepth, results) {
     const gitDir = path.join(dir, '.git');
     if (fs.existsSync(gitDir) && fs.statSync(gitDir).isDirectory()) {
       results.add(dir);
+      if (repoRootMap && rootPath) {
+        repoRootMap.set(dir, rootPath);
+      }
       return; // Ne pas scanner les sous-dossiers d'un dépôt Git existant
     }
 
@@ -357,7 +367,7 @@ function findGitRepositories(dir, currentDepth, maxDepth, results) {
         ) {
           continue;
         }
-        findGitRepositories(path.join(dir, name), currentDepth + 1, maxDepth, results);
+        findGitRepositories(path.join(dir, name), currentDepth + 1, maxDepth, results, rootPath, repoRootMap);
       }
     }
   } catch {}
@@ -366,8 +376,10 @@ function findGitRepositories(dir, currentDepth, maxDepth, results) {
 /**
  * Inspecte un dépôt Git individuel
  */
-async function inspectGitRepository(repoPath) {
+async function inspectGitRepository(repoPath, rootPath) {
   const name = path.basename(repoPath);
+  const parentDir = path.dirname(repoPath);
+  const parentName = path.basename(parentDir);
 
   let branch = 'unknown';
   let isClean = true;
@@ -460,6 +472,9 @@ async function inspectGitRepository(repoPath) {
   return {
     name,
     path: repoPath,
+    rootPath: rootPath || parentDir,
+    parentDir,
+    parentName,
     branch,
     isClean,
     isDirty: !isClean,

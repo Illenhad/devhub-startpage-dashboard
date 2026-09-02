@@ -27,55 +27,22 @@ class ProjectsFullWidget {
     this.scannedPaths = [];
     this.searchQuery = '';
     this.activeFilter = 'all'; // 'all' | 'dirty' | 'sync' | 'clean'
+    this.groupBy = localStorage.getItem('devhub_projects_groupby') || 'source'; // 'source' | 'parent' | 'none'
+    try {
+      const savedCollapsed = localStorage.getItem('devhub_projects_collapsed_groups');
+      this.collapsedGroups = savedCollapsed ? new Set(JSON.parse(savedCollapsed)) : new Set();
+    } catch {
+      this.collapsedGroups = new Set();
+    }
     this.isLoading = false;
 
     this.bindEvents();
+    this.updateGroupButtonsUI();
     this.loadProjects(true);
   }
 
-  bindEvents() {
-    if (this.refreshBtn) {
-      this.refreshBtn.addEventListener('click', () => this.loadProjects(false));
-    }
-
-    if (this.searchInput) {
-      this.searchInput.addEventListener('input', (e) => {
-        this.searchQuery = e.target.value.toLowerCase().trim();
-        this.render();
-      });
-    }
-
-    if (this.configPathsBtn) {
-      this.configPathsBtn.addEventListener('click', () => this.openPathsModal());
-    }
-
-    if (this.pathsModalClose) {
-      this.pathsModalClose.addEventListener('click', () => this.closePathsModal());
-    }
-
-    if (this.pathsModal) {
-      this.pathsModal.addEventListener('click', (e) => {
-        if (e.target === this.pathsModal) this.closePathsModal();
-      });
-    }
-
-    if (this.pathAddForm) {
-      this.pathAddForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        this.addPath();
-      });
-    }
-
-    // Gestion des boutons de filtres
-    const filterBtns = document.querySelectorAll('.projects-filter-btn');
-    filterBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        filterBtns.forEach(b => b.classList.remove('bg-brand-500', 'text-white'));
-        btn.classList.add('bg-brand-500', 'text-white');
-        this.activeFilter = btn.dataset.filter || 'all';
-        this.render();
-      });
-    });
+  initView() {
+    this.loadProjects(true);
   }
 
   async loadProjects(silent = false) {
@@ -115,6 +82,167 @@ class ProjectsFullWidget {
     }
   }
 
+  bindEvents() {
+    if (this.refreshBtn) {
+      this.refreshBtn.addEventListener('click', () => this.loadProjects(false));
+    }
+
+    if (this.searchInput) {
+      this.searchInput.addEventListener('input', (e) => {
+        this.searchQuery = e.target.value.toLowerCase().trim();
+        this.render();
+      });
+    }
+
+    if (this.configPathsBtn) {
+      this.configPathsBtn.addEventListener('click', () => this.openPathsModal());
+    }
+
+    if (this.pathsModalClose) {
+      this.pathsModalClose.addEventListener('click', () => this.closePathsModal());
+    }
+
+    if (this.pathsModal) {
+      this.pathsModal.addEventListener('click', (e) => {
+        if (e.target === this.pathsModal) this.closePathsModal();
+      });
+    }
+
+    if (this.pathAddForm) {
+      this.pathAddForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.addPath();
+      });
+    }
+
+    // Gestion des boutons de filtres Git
+    const filterBtns = document.querySelectorAll('.projects-filter-btn');
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBtns.forEach(b => {
+          b.className = 'projects-filter-btn px-3 py-1.5 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs font-semibold transition-all cursor-pointer';
+        });
+        btn.className = 'projects-filter-btn px-3 py-1.5 rounded-xl bg-brand-500 text-white shadow-sm text-xs font-bold transition-all cursor-pointer';
+        this.activeFilter = btn.dataset.filter || 'all';
+        this.render();
+      });
+    });
+
+    // Gestion des boutons d'organisation / regroupement
+    const groupBtns = document.querySelectorAll('.projects-group-btn');
+    groupBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.groupBy = btn.dataset.group || 'source';
+        localStorage.setItem('devhub_projects_groupby', this.groupBy);
+        this.updateGroupButtonsUI();
+        this.render();
+      });
+    });
+
+    // Délégation d'événements pour les sections de groupe (repli & ouverture)
+    if (this.gridContainer) {
+      this.gridContainer.addEventListener('click', (e) => {
+        const toggleEl = e.target.closest('[data-action="toggle-group"]');
+        if (toggleEl) {
+          e.preventDefault();
+          const groupKey = toggleEl.getAttribute('data-group-key');
+          if (groupKey) {
+            this.toggleGroupCollapse(groupKey);
+          }
+          return;
+        }
+
+        const openBtn = e.target.closest('[data-action="open-folder"]');
+        if (openBtn) {
+          e.preventDefault();
+          const folderPath = openBtn.getAttribute('data-path');
+          if (folderPath) {
+            this.open(folderPath, 'finder');
+          }
+          return;
+        }
+      });
+    }
+  }
+
+  updateGroupButtonsUI() {
+    const groupBtns = document.querySelectorAll('.projects-group-btn');
+    groupBtns.forEach(btn => {
+      const mode = btn.dataset.group;
+      if (mode === this.groupBy) {
+        btn.className = 'projects-group-btn px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer bg-brand-500 text-white shadow-sm';
+      } else {
+        btn.className = 'projects-group-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60';
+      }
+    });
+  }
+
+  toggleGroupCollapse(groupKey) {
+    if (!groupKey) return;
+    if (this.collapsedGroups.has(groupKey)) {
+      this.collapsedGroups.delete(groupKey);
+    } else {
+      this.collapsedGroups.add(groupKey);
+    }
+    try {
+      localStorage.setItem('devhub_projects_collapsed_groups', JSON.stringify(Array.from(this.collapsedGroups)));
+    } catch {}
+    this.render();
+  }
+
+  getProjectSourceGroup(p) {
+    if (p.rootPath) return p.rootPath;
+    if (this.scannedPaths && this.scannedPaths.length > 0) {
+      const normProj = (p.path || '').replace(/\\/g, '/').toLowerCase();
+      const match = this.scannedPaths.find(sp => {
+        const normRoot = sp.replace(/\\/g, '/').toLowerCase();
+        return normProj.startsWith(normRoot);
+      });
+      if (match) return match;
+    }
+    return p.parentDir || 'Autres dépôts';
+  }
+
+  getProjectParentGroup(p) {
+    if (p.parentDir) return p.parentDir;
+    if (!p.path) return 'Autres dépôts';
+    const normalized = p.path.replace(/\\/g, '/');
+    const parts = normalized.split('/').filter(Boolean);
+    if (parts.length <= 1) return p.path;
+    parts.pop();
+    return parts.join('/');
+  }
+
+  formatGroupLabel(groupKey, mode) {
+    const isWsl = groupKey.includes('wsl.localhost') || groupKey.startsWith('\\\\wsl$') || groupKey.includes('/home/');
+    const icon = isWsl ? '🐧' : '📁';
+    let title = groupKey;
+    let subtitle = groupKey;
+
+    if (mode === 'source') {
+      if (isWsl) {
+        const match = groupKey.match(/wsl(?:\.localhost)?[\/\\]+([^\/\\]+)[\/\\]+(.+)/i);
+        if (match) {
+          const distro = match[1];
+          const linuxRel = match[2].replace(/[\/\\]+/g, '/');
+          title = `WSL : ${distro} (~/${linuxRel.replace(/^home\/[^\/]+\//, '')})`;
+        } else {
+          title = `WSL (${groupKey})`;
+        }
+      } else {
+        title = groupKey;
+      }
+    } else if (mode === 'parent') {
+      const normalized = groupKey.replace(/\\/g, '/');
+      const parts = normalized.split('/').filter(Boolean);
+      const parentName = parts[parts.length - 1] || groupKey;
+      title = parentName;
+      subtitle = groupKey;
+    }
+
+    return { icon, title, subtitle, isWsl };
+  }
+
   render() {
     const totalCount = this.projects.length;
     const dirtyCount = this.projects.filter(p => p.isDirty).length;
@@ -143,6 +271,7 @@ class ProjectsFullWidget {
         p.name.toLowerCase().includes(this.searchQuery) ||
         p.branch.toLowerCase().includes(this.searchQuery) ||
         p.path.toLowerCase().includes(this.searchQuery) ||
+        (p.parentName && p.parentName.toLowerCase().includes(this.searchQuery)) ||
         (p.tech && p.tech.name.toLowerCase().includes(this.searchQuery)) ||
         (p.lastCommit && p.lastCommit.subject.toLowerCase().includes(this.searchQuery))
       );
@@ -150,7 +279,7 @@ class ProjectsFullWidget {
 
     if (filtered.length === 0) {
       this.gridContainer.innerHTML = `
-        <div class="col-span-full py-16 text-center text-zinc-500 text-xs">
+        <div class="py-16 text-center text-zinc-500 text-xs">
           <div class="flex flex-col items-center justify-center space-y-2">
             <span class="text-3xl">📁</span>
             <span class="text-sm text-zinc-400 font-medium">Aucun projet ne correspond à vos critères</span>
@@ -161,7 +290,101 @@ class ProjectsFullWidget {
       return;
     }
 
-    this.gridContainer.innerHTML = filtered.map(p => `
+    // Option 3 : Vue plate continue (sans regroupement)
+    if (this.groupBy === 'none') {
+      this.gridContainer.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          ${filtered.map(p => this.renderProjectCard(p)).join('')}
+        </div>
+      `;
+      return;
+    }
+
+    // Options 1 & 2 : Regroupement par dossier source ou par dossier parent direct
+    const groupsMap = new Map();
+    for (const p of filtered) {
+      const groupKey = this.groupBy === 'source'
+        ? this.getProjectSourceGroup(p)
+        : this.getProjectParentGroup(p);
+
+      if (!groupsMap.has(groupKey)) {
+        groupsMap.set(groupKey, []);
+      }
+      groupsMap.get(groupKey).push(p);
+    }
+
+    // Tri des groupes
+    const sortedGroupKeys = Array.from(groupsMap.keys()).sort((a, b) => {
+      return a.localeCompare(b);
+    });
+
+    this.gridContainer.innerHTML = sortedGroupKeys.map(groupKey => {
+      const groupProjects = groupsMap.get(groupKey);
+      const isCollapsed = this.collapsedGroups.has(groupKey);
+      const groupDirtyCount = groupProjects.filter(p => p.isDirty).length;
+      const { icon, title, subtitle, isWsl } = this.formatGroupLabel(groupKey, this.groupBy);
+
+      return `
+        <div class="space-y-3 project-group-section">
+          <!-- En-tête de section de groupe -->
+          <div class="flex items-center justify-between p-3 px-4 rounded-2xl bg-zinc-900/80 border border-zinc-800/90 shadow-sm transition-all hover:border-zinc-700/80">
+            <div
+              data-action="toggle-group"
+              data-group-key="${this.escapeHtml(groupKey)}"
+              class="flex items-center gap-2.5 min-w-0 cursor-pointer flex-1 select-none group"
+            >
+              <span class="p-1 rounded-lg text-zinc-500 group-hover:text-zinc-200 transition-transform ${isCollapsed ? '-rotate-90' : ''}">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </span>
+              <span class="p-1.5 rounded-xl ${isWsl ? 'bg-indigo-500/10 text-indigo-400' : 'bg-orange-500/10 text-orange-400'} text-sm shrink-0">
+                ${icon}
+              </span>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <h3 class="font-bold text-xs text-zinc-100 group-hover:text-brand-400 transition-colors truncate">
+                    ${this.escapeHtml(title)}
+                  </h3>
+                </div>
+                <p class="text-[10px] text-zinc-500 font-mono truncate max-w-xl" title="${this.escapeHtml(subtitle)}">
+                  ${this.escapeHtml(subtitle)}
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 font-semibold">
+                ${groupProjects.length} dépôt${groupProjects.length > 1 ? 's' : ''}
+              </span>
+              ${groupDirtyCount > 0 ? `
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                  ⚠️ ${groupDirtyCount} modif.
+                </span>
+              ` : ''}
+              <button
+                type="button"
+                data-action="open-folder"
+                data-path="${this.escapeHtml(groupKey)}"
+                class="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer"
+                title="Ouvrir le dossier dans l'Explorateur / Finder"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Grille des Cartes du Groupe (Repliable) -->
+          ${!isCollapsed ? `
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              ${groupProjects.map(p => this.renderProjectCard(p)).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  renderProjectCard(p) {
+    return `
       <div class="glass-card rounded-3xl p-5 shadow-xl space-y-4 hover:border-zinc-700/80 transition-all flex flex-col justify-between group">
         
         <!-- En-tête de Carte -->
@@ -276,7 +499,7 @@ class ProjectsFullWidget {
         </div>
 
       </div>
-    `).join('');
+    `;
   }
 
   async open(projectPath, editor) {

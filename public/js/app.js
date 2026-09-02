@@ -3,43 +3,47 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Horloge & Date
+  // 1. Horloge & Date
   initClock();
 
-  // Barre de Recherche Rapide
+  // 2. Barre de Recherche Rapide
   initSearch();
 
-  // Gestionnaire de Thème (Système / Clair / Sombre)
-  window.themeManager = new window.ThemeManager();
-
-  // Initialisation des Widgets
-  window.systemWidget = new window.SystemWidget();
-  window.systemFullWidget = new window.SystemFullWidget();
-  window.dockerWidget = new window.DockerWidget();
-  window.dockerFullWidget = new window.DockerFullWidget();
-  window.ollamaWidget = new window.OllamaWidget();
-  window.ollamaFullWidget = new window.OllamaFullWidget();
-  window.rssWidget = new window.RssWidget();
-  window.rssFullWidget = new window.RssFullWidget();
-  if (window.PortsWidget) window.portsWidget = new window.PortsWidget();
-  if (window.PortsFullWidget) window.portsFullWidget = new window.PortsFullWidget();
-  if (window.ProjectsWidget) window.projectsWidget = new window.ProjectsWidget();
-  if (window.ProjectsFullWidget) window.projectsFullWidget = new window.ProjectsFullWidget();
-
-  // Gestionnaire de Synchronisation Multi-PC (Turso Cloud)
-  if (window.SyncManager) {
-    window.syncManager = new window.SyncManager();
-  }
-
-  // Gestionnaire d'Agencement de l'Accueil (Drag & Drop, Grille & Visibilité)
-  if (window.DashboardLayoutManager) {
-    window.dashboardLayoutManager = new window.DashboardLayoutManager();
-  }
-
-  // Gestion des Onglets Pleine Page
+  // 3. Gestion des Onglets Pleine Page (prioritaire pour garantir la navigation)
   initTabs();
 
-  // Nettoyage et suppression des états de repli
+  // 4. Gestionnaire de Thème (Système / Clair / Sombre)
+  try {
+    if (window.ThemeManager) window.themeManager = new window.ThemeManager();
+  } catch (err) {
+    console.warn('⚠️ [App] Erreur ThemeManager:', err);
+  }
+
+  // 5. Initialisation sécurisée des Widgets
+  const safeInit = (fn) => {
+    try { fn(); } catch (err) { console.warn('⚠️ [App] Erreur initialisation widget:', err); }
+  };
+
+  safeInit(() => { if (window.SystemWidget) window.systemWidget = new window.SystemWidget(); });
+  safeInit(() => { if (window.SystemFullWidget) window.systemFullWidget = new window.SystemFullWidget(); });
+  safeInit(() => { if (window.DockerWidget) window.dockerWidget = new window.DockerWidget(); });
+  safeInit(() => { if (window.DockerFullWidget) window.dockerFullWidget = new window.DockerFullWidget(); });
+  safeInit(() => { if (window.OllamaWidget) window.ollamaWidget = new window.OllamaWidget(); });
+  safeInit(() => { if (window.OllamaFullWidget) window.ollamaFullWidget = new window.OllamaFullWidget(); });
+  safeInit(() => { if (window.RssWidget) window.rssWidget = new window.RssWidget(); });
+  safeInit(() => { if (window.RssFullWidget) window.rssFullWidget = new window.RssFullWidget(); });
+  safeInit(() => { if (window.PortsWidget) window.portsWidget = new window.PortsWidget(); });
+  safeInit(() => { if (window.PortsFullWidget) window.portsFullWidget = new window.PortsFullWidget(); });
+  safeInit(() => { if (window.ProjectsWidget) window.projectsWidget = new window.ProjectsWidget(); });
+  safeInit(() => { if (window.ProjectsFullWidget) window.projectsFullWidget = new window.ProjectsFullWidget(); });
+
+  // 6. Gestionnaire de Synchronisation Multi-PC (Turso Cloud)
+  safeInit(() => { if (window.SyncManager) window.syncManager = new window.SyncManager(); });
+
+  // 7. Gestionnaire d'Agencement de l'Accueil (Drag & Drop, Grille & Visibilité)
+  safeInit(() => { if (window.DashboardLayoutManager) window.dashboardLayoutManager = new window.DashboardLayoutManager(); });
+
+  // 8. Nettoyage et suppression des états de repli
   cleanupCollapsibles();
 });
 
@@ -154,9 +158,11 @@ function initTabs() {
   const views = document.querySelectorAll('.app-view');
 
   function switchTab(targetId) {
+    if (!targetId) return;
+
     // Fermer toute modale de lecture éventuellement ouverte
     if (window.rssFullWidget && typeof window.rssFullWidget.closeReaderModal === 'function') {
-      window.rssFullWidget.closeReaderModal();
+      try { window.rssFullWidget.closeReaderModal(); } catch {}
     }
 
     // Masquer toutes les vues
@@ -172,9 +178,9 @@ function initTabs() {
     tabButtons.forEach(btn => {
       const isTarget = btn.getAttribute('data-tab-target') === targetId;
       if (isTarget) {
-        btn.className = 'tab-nav-btn px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 bg-brand-500 text-white shadow-sm font-bold text-xs';
+        btn.className = 'tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 bg-brand-500 text-white shadow-sm font-bold text-xs shrink-0 cursor-pointer';
       } else {
-        btn.className = 'tab-nav-btn px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs';
+        btn.className = 'tab-nav-btn px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs shrink-0 cursor-pointer';
       }
     });
 
@@ -183,25 +189,33 @@ function initTabs() {
     window.location.hash = targetId;
 
     // Déclencher le chargement des données spécifiques
-    if (targetId === 'dashboard') {
-      if (window.rssWidget) window.rssWidget.loadUnreadCount();
-      if (window.portsWidget) window.portsWidget.loadPorts();
-      if (window.projectsWidget) window.projectsWidget.loadProjects();
-    } else if (targetId === 'system' && window.systemFullWidget) {
-      window.systemFullWidget.initView();
-    } else if (targetId === 'docker' && window.dockerFullWidget) {
-      window.dockerFullWidget.initView();
-    } else if (targetId === 'ollama' && window.ollamaFullWidget) {
-      window.ollamaFullWidget.initView();
-    } else if (targetId === 'rss' && window.rssFullWidget) {
-      window.rssFullWidget.initView();
-    } else if (targetId === 'projects' && window.projectsFullWidget) {
-      window.projectsFullWidget.loadProjects();
+    try {
+      if (targetId === 'dashboard') {
+        if (window.rssWidget && typeof window.rssWidget.loadUnreadCount === 'function') window.rssWidget.loadUnreadCount();
+        if (window.portsWidget && typeof window.portsWidget.loadPorts === 'function') window.portsWidget.loadPorts();
+        if (window.projectsWidget && typeof window.projectsWidget.loadProjects === 'function') window.projectsWidget.loadProjects();
+      } else if (targetId === 'system' && window.systemFullWidget && typeof window.systemFullWidget.initView === 'function') {
+        window.systemFullWidget.initView();
+      } else if (targetId === 'docker' && window.dockerFullWidget && typeof window.dockerFullWidget.initView === 'function') {
+        window.dockerFullWidget.initView();
+      } else if (targetId === 'ollama' && window.ollamaFullWidget && typeof window.ollamaFullWidget.initView === 'function') {
+        window.ollamaFullWidget.initView();
+      } else if (targetId === 'rss' && window.rssFullWidget && typeof window.rssFullWidget.initView === 'function') {
+        window.rssFullWidget.initView();
+      } else if (targetId === 'projects' && window.projectsFullWidget && typeof window.projectsFullWidget.loadProjects === 'function') {
+        window.projectsFullWidget.loadProjects();
+      }
+    } catch (err) {
+      console.warn('⚠️ [SwitchTab] Erreur déclenchement données vue:', err);
     }
   }
 
+  // Exposer sur window pour tous les boutons / widgets
+  window.switchTab = switchTab;
+
   tabButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
       const target = btn.getAttribute('data-tab-target');
       switchTab(target);
     });

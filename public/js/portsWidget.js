@@ -134,88 +134,106 @@ class PortsWidget {
 
     // 2. Rendu structuré des informations
     this.contentEl.innerHTML = `
-      <div class="space-y-3">
-        <!-- 3 Cartes de Métriques Clés -->
-        <div class="grid grid-cols-3 gap-2 text-center">
-          <div class="p-2 rounded-2xl bg-zinc-900/70 border border-zinc-800/80">
-            <span class="text-[9px] text-zinc-500 font-semibold uppercase block">Serveurs Dev</span>
-            <span class="font-mono text-sm font-bold ${devWebPorts.length > 0 ? 'text-emerald-400' : 'text-zinc-400'} mt-0.5 block">
-              ${devWebPorts.length}
-            </span>
+      <div class="space-y-3 flex-1 flex flex-col justify-between">
+        <div class="space-y-3">
+          <!-- 3 Cartes de Métriques Clés -->
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="p-2 rounded-2xl bg-zinc-900/70 border border-zinc-800/80">
+              <span class="text-[9px] text-zinc-500 font-semibold uppercase block">Serveurs Dev</span>
+              <span class="font-mono text-sm font-bold ${devWebPorts.length > 0 ? 'text-emerald-400' : 'text-zinc-400'} mt-0.5 block">
+                ${devWebPorts.length}
+              </span>
+            </div>
+
+            <div class="p-2 rounded-2xl bg-zinc-900/70 border border-zinc-800/80">
+              <span class="text-[9px] text-zinc-500 font-semibold uppercase block">Bases & IA</span>
+              <span class="font-mono text-sm font-bold ${dbPorts.length > 0 ? 'text-purple-400' : 'text-zinc-400'} mt-0.5 block">
+                ${dbPorts.length}
+              </span>
+            </div>
+
+            <div class="p-2 rounded-2xl bg-zinc-900/70 border border-zinc-800/80">
+              <span class="text-[9px] text-zinc-500 font-semibold uppercase block">Arrêtables</span>
+              <span class="font-mono text-sm font-bold ${killableCount > 0 ? 'text-indigo-400' : 'text-zinc-400'} mt-0.5 block">
+                ${killableCount}
+              </span>
+            </div>
           </div>
 
-          <div class="p-2 rounded-2xl bg-zinc-900/70 border border-zinc-800/80">
-            <span class="text-[9px] text-zinc-500 font-semibold uppercase block">Bases & IA</span>
-            <span class="font-mono text-sm font-bold ${dbPorts.length > 0 ? 'text-purple-400' : 'text-zinc-400'} mt-0.5 block">
-              ${dbPorts.length}
-            </span>
-          </div>
+          <!-- Section Serveurs Actifs & Raccourcis Rapides -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between text-[10px] text-zinc-400 px-0.5">
+              <span class="font-semibold uppercase tracking-wider text-[9px] text-zinc-500">Serveurs détectés</span>
+              <div class="flex items-center gap-1.5 font-mono text-[9px] text-zinc-500">
+                <span>${localOnlyPorts.length} local • ${publicPorts.length} LAN</span>
+                ${devWebPorts.length > 0 ? `
+                  <button
+                    onclick="window.portsWidget.killAllDev()"
+                    class="px-1.5 py-0.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-[9px] font-bold transition-all cursor-pointer"
+                    title="Arrêter tous les serveurs de dev en cours"
+                  >
+                    Tuer dev (${devWebPorts.length})
+                  </button>
+                ` : ''}
+              </div>
+            </div>
 
-          <div class="p-2 rounded-2xl bg-zinc-900/70 border border-zinc-800/80">
-            <span class="text-[9px] text-zinc-500 font-semibold uppercase block">Arrêtables</span>
-            <span class="font-mono text-sm font-bold ${killableCount > 0 ? 'text-indigo-400' : 'text-zinc-400'} mt-0.5 block">
-              ${killableCount}
-            </span>
+            ${devWebPorts.length > 0 || dbPorts.length > 0 ? `
+              <div class="flex flex-wrap gap-1.5 max-h-[85px] overflow-y-auto pr-1">
+                ${[...devWebPorts, ...dbPorts].map(p => `
+                  <a
+                    href="${p.url}"
+                    target="_blank"
+                    class="px-2.5 py-1 rounded-xl bg-zinc-900/90 border border-zinc-800/90 hover:border-brand-500/50 hover:bg-zinc-800/80 text-[11px] text-zinc-200 hover:text-white flex items-center gap-1.5 transition-all shadow-sm group"
+                    title="Ouvrir ${p.serviceName} (${p.url}) • PID ${p.pid}"
+                  >
+                    <span>${p.icon}</span>
+                    <span class="font-mono font-bold text-white group-hover:text-brand-300">:${p.port}</span>
+                    <span class="text-[10px] text-zinc-400 truncate max-w-[80px]">${p.command}</span>
+                  </a>
+                `).join('')}
+              </div>
+            ` : `
+              <div class="p-2.5 rounded-2xl bg-zinc-900/40 border border-zinc-800/50 text-[11px] text-zinc-400 flex items-center gap-2">
+                <span class="text-emerald-400 text-xs">✓</span>
+                <span>Aucun serveur web en conflit</span>
+              </div>
+            `}
           </div>
         </div>
 
-        <!-- Section Serveurs Actifs & Raccourcis Rapides -->
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between text-[10px] text-zinc-400 px-0.5">
-            <span class="font-semibold uppercase tracking-wider text-[9px] text-zinc-500">Serveurs détectés</span>
-            <span class="font-mono text-zinc-500">${localOnlyPorts.length} local • ${publicPorts.length} LAN/Tous</span>
-          </div>
-
-          ${devWebPorts.length > 0 || dbPorts.length > 0 ? `
-            <div class="flex flex-wrap gap-1.5 max-h-[85px] overflow-y-auto pr-1">
-              ${[...devWebPorts, ...dbPorts].map(p => `
-                <a
-                  href="${p.url}"
-                  target="_blank"
-                  class="px-2.5 py-1 rounded-xl bg-zinc-900/90 border border-zinc-800/90 hover:border-brand-500/50 hover:bg-zinc-800/80 text-[11px] text-zinc-200 hover:text-white flex items-center gap-1.5 transition-all shadow-sm group"
-                  title="Ouvrir ${p.serviceName} (${p.url}) • PID ${p.pid}"
-                >
-                  <span>${p.icon}</span>
-                  <span class="font-mono font-bold text-white group-hover:text-brand-300">:${p.port}</span>
-                  <span class="text-[10px] text-zinc-400 truncate max-w-[80px]">${p.command}</span>
-                </a>
-              `).join('')}
-            </div>
-          ` : `
-            <div class="p-2.5 rounded-2xl bg-zinc-900/40 border border-zinc-800/50 text-[11px] text-zinc-400 flex items-center gap-2">
-              <span class="text-emerald-400 text-xs">✓</span>
-              <span>Aucun serveur web en conflit (ports 3000, 5173, 8080 libres)</span>
-            </div>
-          `}
-        </div>
-
-        <!-- Bas de carte : Bouton Tuer serveurs dev (si actifs) + Lien vers l'onglet Système -->
-        <div class="pt-1 flex items-center justify-between gap-2 border-t border-zinc-800/60">
-          ${devWebPorts.length > 0 ? `
-            <button
-              onclick="window.portsWidget.killAllDev()"
-              class="px-2 py-1 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-300 hover:text-rose-200 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer"
-              title="Arrêter tous les serveurs de dev en cours"
-            >
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-              <span>Libérer dev (${devWebPorts.length})</span>
-            </button>
-          ` : `
-            <span class="text-[10px] text-zinc-500 flex items-center gap-1 font-mono">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              <span>${totalCount} sockets en écoute</span>
-            </span>
-          `}
-
+        <!-- Bouton Accès Système & Auto-refresh (Harmonisé avec Module 1 Système) -->
+        <div class="flex items-center gap-1.5 pt-0.5">
           <button
             onclick="window.switchTab && window.switchTab('system'); setTimeout(() => { document.getElementById('system-ports-section')?.scrollIntoView({ behavior: 'smooth' }); }, 150);"
-            class="text-[11px] text-brand-400 hover:text-brand-300 hover:underline font-semibold cursor-pointer ml-auto"
+            class="flex-1 py-2 px-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] font-semibold text-zinc-300 hover:text-white flex items-center justify-between transition-all group shadow-sm cursor-pointer"
           >
-            Inspecteur & Kill →
+            <span>Inspecteur Réseau</span>
+            <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7"/></svg>
           </button>
+
+          <div class="flex items-center bg-zinc-900/90 border border-zinc-800 rounded-2xl p-1 px-1.5 gap-1 shrink-0 text-[9px]" title="Auto-actualisation périodique">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input id="ports-auto-toggle" type="checkbox" class="sr-only peer" ${this.autoRefresh ? 'checked' : ''}>
+              <div class="w-5 h-3 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:bg-brand-500"></div>
+            </label>
+            <span id="ports-auto-indicator" class="${this.autoRefresh ? '' : 'hidden'} w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+          </div>
         </div>
       </div>
     `;
+
+    // Réattacher les écouteurs de l'auto-toggle
+    const toggleEl = document.getElementById('ports-auto-toggle');
+    if (toggleEl) {
+      this.autoToggle = toggleEl;
+      this.autoIndicator = document.getElementById('ports-auto-indicator');
+      toggleEl.addEventListener('change', (e) => {
+        this.autoRefresh = e.target.checked;
+        localStorage.setItem('devhub_ports_auto_refresh', this.autoRefresh ? 'true' : 'false');
+        this.updateAutoRefresh();
+      });
+    }
   }
 
   async killAllDev() {

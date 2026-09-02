@@ -174,16 +174,15 @@ class OllamaWidget {
           </div>
 
           <!-- Bouton accès à la page complète Ollama Studio -->
-          <button
-            onclick="document.querySelector('[data-tab-target=\\'ollama\\']')?.click()"
-            class="w-full py-2 px-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] font-semibold text-zinc-300 hover:text-white flex items-center justify-between transition-all group shadow-sm"
-          >
-            <span class="flex items-center gap-1.5">
-              <svg class="w-3.5 h-3.5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <div class="pt-0.5">
+            <button
+              onclick="window.switchTab && window.switchTab('ollama')"
+              class="w-full py-2 px-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] font-semibold text-zinc-300 hover:text-white flex items-center justify-between transition-all group shadow-sm cursor-pointer"
+            >
               <span>Ouvrir AI Studio</span>
-            </span>
-            <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          </button>
+              <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7"/></svg>
+            </button>
+          </div>
         </div>
       `;
     }
@@ -206,22 +205,35 @@ class OllamaWidget {
 
     if (this.summaryContainerEl) {
       this.summaryContainerEl.innerHTML = `
-        <div class="py-4 px-3 text-center rounded-2xl bg-zinc-900/40 border border-zinc-800/60 space-y-2.5">
-          <p class="text-xs font-bold text-zinc-300">Ollama non démarré</p>
-          <p class="text-[10px] text-zinc-500">Démarrez le moteur IA pour interagir avec vos modèles locaux.</p>
-          <div class="flex items-center justify-center gap-2 pt-1">
+        <div class="space-y-3 flex-1 flex flex-col justify-between">
+          <div class="py-4 px-3 text-center rounded-2xl bg-zinc-900/40 border border-zinc-800/60 space-y-2.5">
+            <p class="text-xs font-bold text-zinc-300">Ollama non démarré</p>
+            <p class="text-[10px] text-zinc-500">Démarrez le moteur IA pour interagir avec vos modèles locaux.</p>
+            <div class="flex items-center justify-center gap-2 pt-1">
+              <button
+                onclick="window.ollamaWidget.toggleService()"
+                class="px-3 py-1.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 0M12 2v10"/></svg>
+                <span>Démarrer Ollama</span>
+              </button>
+              <button
+                onclick="window.ollamaWidget.checkStatus(true)"
+                class="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-[11px] font-semibold text-zinc-300 transition-all cursor-pointer"
+              >
+                Actualiser
+              </button>
+            </div>
+          </div>
+
+          <!-- Bouton accès à la page complète Ollama Studio -->
+          <div class="pt-0.5">
             <button
-              onclick="window.ollamaWidget.toggleService()"
-              class="px-3 py-1.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+              onclick="window.switchTab && window.switchTab('ollama')"
+              class="w-full py-2 px-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] font-semibold text-zinc-300 hover:text-white flex items-center justify-between transition-all group shadow-sm cursor-pointer"
             >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 11-12.728 0M12 2v10"/></svg>
-              <span>Démarrer Ollama</span>
-            </button>
-            <button
-              onclick="window.ollamaWidget.checkStatus(true)"
-              class="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-[11px] font-semibold text-zinc-300 transition-all cursor-pointer"
-            >
-              Actualiser
+              <span>Ouvrir AI Studio</span>
+              <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7"/></svg>
             </button>
           </div>
         </div>

@@ -245,7 +245,8 @@ html.light [class*="bg-zinc-900"] {
   background-color: #f1f5f9 !important;
 }
 
-html.light [class*="bg-zinc-800"] {
+html.light [class*="bg-zinc-800"],
+html.light [class*="bg-zinc-700"] {
   background-color: #e2e8f0 !important;
 }
 
@@ -265,14 +266,16 @@ html.light article[class*="bg-zinc-950"] {
 
 /* Boutons d'action dans les cartes en mode clair */
 html.light button[class*="bg-zinc-900"],
-html.light button[class*="bg-zinc-800"] {
+html.light button[class*="bg-zinc-800"],
+html.light button[class*="bg-zinc-700"] {
   background-color: #e2e8f0 !important;
   border-color: #cbd5e1 !important;
   color: #1e293b !important;
 }
 
 html.light button[class*="bg-zinc-900"]:hover,
-html.light button[class*="bg-zinc-800"]:hover {
+html.light button[class*="bg-zinc-800"]:hover,
+html.light button[class*="bg-zinc-700"]:hover {
   background-color: #cbd5e1 !important;
   color: #0f172a !important;
 }
@@ -281,6 +284,8 @@ html.light button[class*="bg-zinc-800"]:hover {
 html.light .tab-nav-btn.bg-brand-500,
 html.light .theme-toggle-btn.bg-brand-500,
 html.light .theme-preset-btn.bg-brand-500,
+html.light .projects-group-btn.bg-brand-500,
+html.light .projects-filter-btn.bg-brand-500,
 html.light button.bg-brand-500,
 html.light .bg-brand-500 {
   background-color: #6366f1 !important;
@@ -330,6 +335,10 @@ html.light .theme-toggle-btn.bg-brand-500,
 html.light .theme-toggle-btn.bg-brand-500 *,
 html.light .theme-preset-btn.bg-brand-500,
 html.light .theme-preset-btn.bg-brand-500 *,
+html.light .projects-group-btn.bg-brand-500,
+html.light .projects-group-btn.bg-brand-500 *,
+html.light .projects-filter-btn.bg-brand-500,
+html.light .projects-filter-btn.bg-brand-500 *,
 html.light .app-logo-badge,
 html.light .app-logo-badge *,
 html.light .chat-user-bubble,

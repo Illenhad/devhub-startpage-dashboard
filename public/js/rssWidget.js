@@ -149,16 +149,18 @@ class RssWidget {
           `}
 
           <!-- Bouton Ouvrir Lecteur RSS & Veille -->
-          <button
-            onclick="document.querySelector('[data-tab-target=\\'rss\\']')?.click()"
-            class="w-full py-2 px-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] font-semibold text-zinc-300 hover:text-white flex items-center justify-between transition-all group shadow-sm"
-          >
-            <span class="flex items-center gap-1.5">
-              <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
-              <span>Ouvrir Veille & RSS</span>
-            </span>
-            <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          </button>
+          <div class="pt-0.5">
+            <button
+              onclick="window.switchTab && window.switchTab('rss')"
+              class="w-full py-2 px-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] font-semibold text-zinc-300 hover:text-white flex items-center justify-between transition-all group shadow-sm cursor-pointer"
+            >
+              <span class="flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+                <span>Ouvrir Veille & RSS</span>
+              </span>
+              <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7"/></svg>
+            </button>
+          </div>
         </div>
       `;
     }
@@ -170,15 +172,25 @@ class RssWidget {
     }
     if (this.contentEl) {
       this.contentEl.innerHTML = `
-        <div class="py-4 px-3 text-center rounded-2xl bg-zinc-900/40 border border-zinc-800/60 space-y-2">
-          <p class="text-xs font-bold text-zinc-300">Veille & Flux RSS</p>
-          <p class="text-[10px] text-zinc-500">Cliquez pour ouvrir la veille.</p>
-          <button
-            onclick="document.querySelector('[data-tab-target=\\'rss\\']')?.click()"
-            class="px-2.5 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-[10px] text-zinc-200 font-semibold"
-          >
-            Ouvrir
-          </button>
+        <div class="space-y-3 flex-1 flex flex-col justify-between">
+          <div class="py-4 px-3 text-center rounded-2xl bg-zinc-900/40 border border-zinc-800/60 space-y-2">
+            <p class="text-xs font-bold text-zinc-300">Veille & Flux RSS</p>
+            <p class="text-[10px] text-zinc-500">Cliquez pour ouvrir la veille technologique.</p>
+          </div>
+
+          <!-- Bouton Ouvrir Lecteur RSS & Veille -->
+          <div class="pt-0.5">
+            <button
+              onclick="window.switchTab && window.switchTab('rss')"
+              class="w-full py-2 px-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] font-semibold text-zinc-300 hover:text-white flex items-center justify-between transition-all group shadow-sm cursor-pointer"
+            >
+              <span class="flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
+                <span>Ouvrir Veille & RSS</span>
+              </span>
+              <svg class="w-3.5 h-3.5 text-zinc-500 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7"/></svg>
+            </button>
+          </div>
         </div>
       `;
     }

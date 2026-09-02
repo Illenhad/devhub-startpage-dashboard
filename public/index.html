@@ -635,17 +635,10 @@
                 </div>
               </div>
 
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-1">
                 <span id="ports-widget-count" class="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 font-semibold">
                   --
                 </span>
-                <div class="flex items-center bg-zinc-900/90 border border-zinc-800 rounded-2xl p-1 px-1.5 gap-1 shrink-0 text-[9px]" title="Auto-actualisation périodique">
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input id="ports-auto-toggle" type="checkbox" class="sr-only peer">
-                    <div class="w-5 h-3 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:bg-brand-500"></div>
-                  </label>
-                  <span id="ports-auto-indicator" class="hidden w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                </div>
                 <button
                   id="ports-widget-refresh"
                   class="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
@@ -2359,8 +2352,9 @@
             </div>
           </div>
 
-          <!-- Barre de Recherche & Filtres -->
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+          <!-- Barre de Recherche, Filtres & Organisation -->
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
+            <!-- Recherche -->
             <div class="relative flex-1 max-w-md">
               <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -2373,19 +2367,50 @@
               />
             </div>
 
-            <!-- Filtres Rapides -->
-            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-              <button data-filter="all" class="projects-filter-btn px-3 py-1.5 rounded-xl bg-brand-500 text-white text-xs font-semibold transition-all">Tous</button>
-              <button data-filter="dirty" class="projects-filter-btn px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition-all">Modifiés (Dirty)</button>
-              <button data-filter="sync" class="projects-filter-btn px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition-all">À Synchroniser</button>
-              <button data-filter="clean" class="projects-filter-btn px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition-all">Propres (Clean)</button>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <!-- Sélecteur d'Organisation / Regroupement -->
+              <div class="flex items-center bg-zinc-900/90 border border-zinc-800 rounded-2xl p-1 gap-1 text-xs shrink-0" title="Mode d'organisation des projets">
+                <span class="text-[10px] text-zinc-500 font-semibold px-2 uppercase tracking-wider hidden sm:inline">Organisation :</span>
+                <button
+                  data-group="source"
+                  class="projects-group-btn px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer bg-brand-500 text-white shadow-sm"
+                  title="Regrouper selon les dossiers racines configurés"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                  <span>Dossier source</span>
+                </button>
+                <button
+                  data-group="parent"
+                  class="projects-group-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
+                  title="Regrouper par dossier direct contenant les projets"
+                >
+                  <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                  <span>Dossier parent</span>
+                </button>
+                <button
+                  data-group="none"
+                  class="projects-group-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
+                  title="Vue liste continue sans séparateurs"
+                >
+                  <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                  <span>Vue plate</span>
+                </button>
+              </div>
+
+              <!-- Filtres Rapides Git -->
+              <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+                <button data-filter="all" class="projects-filter-btn px-3 py-1.5 rounded-xl bg-brand-500 text-white shadow-sm text-xs font-bold transition-all cursor-pointer">Tous</button>
+                <button data-filter="dirty" class="projects-filter-btn px-3 py-1.5 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs font-semibold transition-all cursor-pointer">Modifiés</button>
+                <button data-filter="sync" class="projects-filter-btn px-3 py-1.5 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs font-semibold transition-all cursor-pointer">À Synchroniser</button>
+                <button data-filter="clean" class="projects-filter-btn px-3 py-1.5 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 text-xs font-semibold transition-all cursor-pointer">Propres</button>
+              </div>
             </div>
           </div>
         </section>
 
-        <!-- Grille de Cartes de Projets -->
-        <div id="projects-grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div class="col-span-full py-16 text-center text-zinc-500 text-xs">
+        <!-- Conteneur des Projets (Grilles groupées ou grille continue) -->
+        <div id="projects-grid-container" class="space-y-6">
+          <div class="py-16 text-center text-zinc-500 text-xs">
             Scan des dépôts Git en cours...
           </div>
         </div>
