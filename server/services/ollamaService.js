@@ -539,7 +539,7 @@ export async function deleteOllamaModel(modelName) {
 
 /**
  * Démarre ou éteint l'application/service Ollama
- * Supporte macOS (Ollama.app via open / osascript / pkill ou ollama serve), Windows (PowerShell / taskkill) et Linux (systemctl / ollama serve)
+ * Supporte macOS (Ollama.app via open / osascript / pkill ou ollama serve), Windows (PowerShell / WSL / taskkill) et Linux (systemctl / ollama serve)
  */
 export async function manageOllamaService(action) {
   if (action !== 'start' && action !== 'stop') {
@@ -558,11 +558,39 @@ export async function manageOllamaService(action) {
         throw new Error(`Échec du lancement d’Ollama: ${err.message}`);
       }
     } else if (isWindows) {
+      let started = false;
+      let lastError = null;
+
+      // 1. Tenter le démarrage dans WSL si présent
       try {
-        await execAsync('powershell -NoProfile -Command "$app = \\"$env:LOCALAPPDATA\\Programs\\Ollama\\ollama app.exe\\"; if (Test-Path $app) { Start-Process $app } else { Start-Process \'ollama\' -ArgumentList \'serve\' -WindowStyle Hidden }"');
-        return { success: true, message: 'Démarrage d’Ollama initié...' };
+        const { stdout } = await execAsync('wsl.exe which ollama');
+        if (stdout && stdout.trim()) {
+          try {
+            await execAsync('wsl.exe -u root systemctl start ollama');
+            started = true;
+          } catch {
+            await execAsync('wsl.exe nohup /usr/local/bin/ollama serve > /dev/null 2>&1 &');
+            started = true;
+          }
+        }
       } catch (err) {
-        throw new Error(`Échec du lancement d’Ollama sur Windows: ${err.message}`);
+        lastError = err;
+      }
+
+      // 2. Tenter le démarrage sous Windows natif si WSL n'a pas pris le relais
+      if (!started) {
+        try {
+          await execAsync('powershell -NoProfile -Command "$app = \\"$env:LOCALAPPDATA\\Programs\\Ollama\\ollama app.exe\\"; if (Test-Path $app) { Start-Process $app } else { Start-Process \'ollama\' -ArgumentList \'serve\' -WindowStyle Hidden }"');
+          started = true;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+
+      if (started) {
+        return { success: true, message: 'Démarrage d’Ollama initié (Windows / WSL)...' };
+      } else {
+        throw new Error(`Échec du lancement d’Ollama sur Windows / WSL: ${lastError?.message || 'Inconnu'}`);
       }
     } else {
       try {
@@ -581,15 +609,28 @@ export async function manageOllamaService(action) {
         throw new Error(`Échec de la fermeture d’Ollama: ${err.message}`);
       }
     } else if (isWindows) {
+      // 1. Arrêt des processus Windows natifs
       try {
-        await execAsync('powershell -NoProfile -Command "Stop-Process -Name \'ollama app\', \'ollama\' -Force -ErrorAction SilentlyContinue"');
-        return { success: true, message: 'Fermeture d’Ollama en cours...' };
-      } catch (err) {
-        throw new Error(`Échec de la fermeture d’Ollama sur Windows: ${err.message}`);
+        await execAsync('powershell -NoProfile -Command "$ErrorActionPreference = \'SilentlyContinue\'; Get-Process \'ollama*\' | Stop-Process -Force; exit 0"');
+      } catch {}
+
+      // 2. Arrêt du service et processus dans WSL
+      try {
+        await execAsync('wsl.exe -u root systemctl stop ollama');
+      } catch {
+        try {
+          await execAsync('wsl.exe -u root pkill -9 -f ollama');
+        } catch {}
       }
+
+      try {
+        await execAsync('wsl.exe -u root pkill -9 -f "ollama serve"');
+      } catch {}
+
+      return { success: true, message: 'Fermeture d’Ollama en cours (Windows & WSL)...' };
     } else {
       try {
-        await execAsync('systemctl stop ollama || pkill -x ollama || true');
+        await execAsync('systemctl stop ollama || pkill -9 -f ollama || true');
         return { success: true, message: 'Service Ollama arrêté' };
       } catch (err) {
         throw new Error(`Échec de l’arrêt d’Ollama: ${err.message}`);
