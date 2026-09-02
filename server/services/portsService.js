@@ -28,23 +28,46 @@ const KNOWN_PORTS = {
   22: { name: 'SSH Server', icon: '🔑', category: 'System' }
 };
 
+let cachedPorts = null;
+let lastPortsFetchTime = 0;
+let inFlightPortsPromise = null;
+const PORTS_CACHE_TTL_MS = 3500; // 3.5s cache pour éviter les rafales d'appels répétés
+
 /**
  * Récupère la liste de tous les ports TCP en écoute (LISTEN) avec leurs processus
  */
-export async function getListeningPorts() {
-  const platform = os.platform();
-
-  try {
-    if (platform === 'win32') {
-      return await getWindowsPorts();
-    } else {
-      // macOS (darwin) et Linux
-      return await getUnixPorts();
-    }
-  } catch (err) {
-    console.error('⚠️ [Ports] Erreur récupération des ports:', err.message);
-    return [];
+export async function getListeningPorts(forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && cachedPorts && (now - lastPortsFetchTime < PORTS_CACHE_TTL_MS)) {
+    return cachedPorts;
   }
+
+  if (inFlightPortsPromise) {
+    return inFlightPortsPromise;
+  }
+
+  inFlightPortsPromise = (async () => {
+    const platform = os.platform();
+    try {
+      let ports = [];
+      if (platform === 'win32') {
+        ports = await getWindowsPorts();
+      } else {
+        // macOS (darwin) et Linux
+        ports = await getUnixPorts();
+      }
+      cachedPorts = ports;
+      lastPortsFetchTime = Date.now();
+      return ports;
+    } catch (err) {
+      console.error('⚠️ [Ports] Erreur récupération des ports:', err.message);
+      return cachedPorts || [];
+    } finally {
+      inFlightPortsPromise = null;
+    }
+  })();
+
+  return inFlightPortsPromise;
 }
 
 /**
@@ -278,7 +301,9 @@ export async function killProcess(pid, port = null) {
   
   // Attendre 200ms que l'OS libère le socket puis renvoyer la liste actualisée
   await new Promise((r) => setTimeout(r, 200));
-  return await getListeningPorts();
+  cachedPorts = null;
+  lastPortsFetchTime = 0;
+  return await getListeningPorts(true);
 }
 
 /**

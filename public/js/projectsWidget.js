@@ -14,14 +14,7 @@ class ProjectsWidget {
     this.isLoading = false;
 
     this.bindEvents();
-    this.loadProjects();
-
-    // Actualisation périodique toutes les 30 secondes
-    setInterval(() => {
-      if (!document.hidden) {
-        this.loadProjects(true);
-      }
-    }, 30000);
+    this.loadProjects(true);
   }
 
   bindEvents() {
@@ -40,7 +33,8 @@ class ProjectsWidget {
     }
 
     try {
-      const res = await fetch('/api/projects');
+      const url = silent ? '/api/projects' : '/api/projects?refresh=true';
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Erreur API projets');
       const data = await res.json();
       this.projects = data.projects || [];

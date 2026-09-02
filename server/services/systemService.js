@@ -316,10 +316,19 @@ async function getUnixDisks() {
   }
 }
 
+let cachedWindowsDisks = null;
+let lastWindowsDisksFetch = 0;
+const WINDOWS_DISKS_CACHE_TTL = 30000; // 30 secondes de cache pour les disques
+
 /**
- * Disques Windows : PowerShell Get-CimInstance Win32_LogicalDisk
+ * Disques Windows : PowerShell Get-CimInstance Win32_LogicalDisk (avec cache)
  */
 async function getWindowsDisks() {
+  const now = Date.now();
+  if (cachedWindowsDisks && (now - lastWindowsDisksFetch < WINDOWS_DISKS_CACHE_TTL)) {
+    return cachedWindowsDisks;
+  }
+
   try {
     const { stdout } = await execFileAsync('powershell.exe', [
       '-NoProfile',
@@ -327,7 +336,7 @@ async function getWindowsDisks() {
       '-Command',
       'Get-CimInstance Win32_LogicalDisk | Select-Object DeviceID,FileSystem,Size,FreeSpace,VolumeName | ConvertTo-Json'
     ], { timeout: 6000 });
-    if (!stdout.trim()) return [];
+    if (!stdout.trim()) return cachedWindowsDisks || [];
 
     let parsed = JSON.parse(stdout.trim());
     if (!Array.isArray(parsed)) {
@@ -359,9 +368,13 @@ async function getWindowsDisks() {
         usedGB: parseFloat(usedGB)
       };
     });
+
+    cachedWindowsDisks = disks;
+    lastWindowsDisksFetch = Date.now();
+    return disks;
   } catch (err) {
     console.error('Erreur getWindowsDisks:', err);
-    return [];
+    return cachedWindowsDisks || [];
   }
 }
 

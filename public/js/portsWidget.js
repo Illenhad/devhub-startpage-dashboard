@@ -9,20 +9,23 @@ class PortsWidget {
     this.contentEl = document.getElementById('ports-widget-content');
     this.countBadge = document.getElementById('ports-widget-count');
     this.statusDot = document.getElementById('ports-widget-dot');
-    this.refreshBtn = document.getElementById('ports-widget-refresh');
+    this.autoToggle = document.getElementById('ports-auto-toggle');
+    this.autoIndicator = document.getElementById('ports-auto-indicator');
+
+    this.autoRefresh = localStorage.getItem('devhub_ports_auto_refresh') === 'true';
+    this.intervalSeconds = 5;
+    this.timerId = null;
 
     this.ports = [];
     this.isLoading = false;
 
     this.bindEvents();
-    this.loadPorts();
+    this.loadPorts(true);
 
-    // Actualisation périodique toutes les 15 secondes
-    setInterval(() => {
-      if (!document.hidden) {
-        this.loadPorts(true);
-      }
-    }, 15000);
+    if (this.autoToggle) {
+      this.autoToggle.checked = this.autoRefresh;
+      this.updateAutoRefresh();
+    }
   }
 
   bindEvents() {
@@ -30,6 +33,33 @@ class PortsWidget {
       this.refreshBtn.addEventListener('click', () => {
         this.loadPorts(false);
       });
+    }
+
+    if (this.autoToggle) {
+      this.autoToggle.addEventListener('change', (e) => {
+        this.autoRefresh = e.target.checked;
+        localStorage.setItem('devhub_ports_auto_refresh', this.autoRefresh ? 'true' : 'false');
+        this.updateAutoRefresh();
+      });
+    }
+  }
+
+  updateAutoRefresh() {
+    if (this.timerId) {
+      clearInterval(this.timerId);
+      this.timerId = null;
+    }
+
+    if (this.autoRefresh) {
+      this.timerId = setInterval(() => {
+        if (!document.hidden) {
+          this.loadPorts(true);
+        }
+      }, this.intervalSeconds * 1000);
+
+      if (this.autoIndicator) this.autoIndicator.classList.remove('hidden');
+    } else {
+      if (this.autoIndicator) this.autoIndicator.classList.add('hidden');
     }
   }
 
@@ -43,7 +73,8 @@ class PortsWidget {
     }
 
     try {
-      const res = await fetch('/api/ports');
+      const url = silent ? '/api/ports' : '/api/ports?refresh=true';
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Erreur API ports');
       const data = await res.json();
       this.ports = data.ports || [];

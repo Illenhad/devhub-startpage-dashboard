@@ -9,7 +9,8 @@ const router = Router();
  */
 router.get('/', async (req, res) => {
   try {
-    const ports = await getListeningPorts();
+    const forceRefresh = req.query.refresh === 'true';
+    const ports = await getListeningPorts(forceRefresh);
     res.json({
       success: true,
       count: ports.length,

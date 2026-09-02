@@ -30,14 +30,7 @@ class ProjectsFullWidget {
     this.isLoading = false;
 
     this.bindEvents();
-    this.loadProjects();
-
-    // Actualisation périodique si l'onglet projets est affiché
-    setInterval(() => {
-      if (this.container && !this.container.classList.contains('hidden') && !document.hidden) {
-        this.loadProjects(true);
-      }
-    }, 15000);
+    this.loadProjects(true);
   }
 
   bindEvents() {
@@ -95,7 +88,8 @@ class ProjectsFullWidget {
     }
 
     try {
-      const res = await fetch('/api/projects');
+      const url = silent ? '/api/projects' : '/api/projects?refresh=true';
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Erreur API projets');
       const data = await res.json();
       this.projects = data.projects || [];

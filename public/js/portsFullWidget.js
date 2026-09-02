@@ -12,7 +12,10 @@ class PortsFullWidget {
     this.webCountEl = document.getElementById('ports-stat-web');
     this.killableCountEl = document.getElementById('ports-stat-killable');
     this.tabBadge = document.getElementById('nav-badge-ports');
-    this.killDevBtn = document.getElementById('ports-kill-all-dev-btn');
+    this.autoToggle = document.getElementById('ports-full-auto-toggle');
+    this.autoRefresh = localStorage.getItem('devhub_ports_full_auto_refresh') === 'true';
+    this.intervalSeconds = 5;
+    this.timerId = null;
 
     this.ports = [];
     this.searchQuery = '';
@@ -20,19 +23,25 @@ class PortsFullWidget {
     this.isLoading = false;
 
     this.bindEvents();
-    this.loadPorts();
+    this.loadPorts(true);
 
-    // Actualisation périodique si l'onglet ports est visible
-    setInterval(() => {
-      if (this.container && !this.container.classList.contains('hidden') && !document.hidden) {
-        this.loadPorts(true);
-      }
-    }, 5000);
+    if (this.autoToggle) {
+      this.autoToggle.checked = this.autoRefresh;
+      this.updateAutoRefresh();
+    }
   }
 
   bindEvents() {
     if (this.refreshBtn) {
       this.refreshBtn.addEventListener('click', () => this.loadPorts(false));
+    }
+
+    if (this.autoToggle) {
+      this.autoToggle.addEventListener('change', (e) => {
+        this.autoRefresh = e.target.checked;
+        localStorage.setItem('devhub_ports_full_auto_refresh', this.autoRefresh ? 'true' : 'false');
+        this.updateAutoRefresh();
+      });
     }
 
     if (this.searchInput) {
@@ -58,6 +67,21 @@ class PortsFullWidget {
     });
   }
 
+  updateAutoRefresh() {
+    if (this.timerId) {
+      clearInterval(this.timerId);
+      this.timerId = null;
+    }
+
+    if (this.autoRefresh) {
+      this.timerId = setInterval(() => {
+        if (this.container && !this.container.classList.contains('hidden') && !document.hidden) {
+          this.loadPorts(true);
+        }
+      }, this.intervalSeconds * 1000);
+    }
+  }
+
   async loadPorts(silent = false) {
     if (this.isLoading) return;
     this.isLoading = true;
@@ -68,7 +92,8 @@ class PortsFullWidget {
     }
 
     try {
-      const res = await fetch('/api/ports');
+      const url = silent ? '/api/ports' : '/api/ports?refresh=true';
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Erreur API ports');
       const data = await res.json();
       this.ports = data.ports || [];

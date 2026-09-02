@@ -15,7 +15,8 @@ const router = Router();
  */
 router.get('/', async (req, res) => {
   try {
-    const projects = await scanProjects();
+    const forceRefresh = req.query.refresh === 'true';
+    const projects = await scanProjects(forceRefresh);
     const paths = await getScannedPaths();
     res.json({
       success: true,
