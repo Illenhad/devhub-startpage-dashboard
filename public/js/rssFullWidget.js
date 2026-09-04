@@ -860,7 +860,38 @@ class RssFullWidget {
     this.renderArticleModalContent(article, index, this.displayedArticles.length);
   }
 
+  resetReaderScroll() {
+    if (this.readerModalBodyEl) {
+      this.readerModalBodyEl.scrollTop = 0;
+      try {
+        this.readerModalBodyEl.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      } catch {}
+      requestAnimationFrame(() => {
+        if (this.readerModalBodyEl) {
+          this.readerModalBodyEl.scrollTop = 0;
+        }
+      });
+      setTimeout(() => {
+        if (this.readerModalBodyEl) {
+          this.readerModalBodyEl.scrollTop = 0;
+        }
+      }, 40);
+      setTimeout(() => {
+        if (this.readerModalBodyEl) {
+          this.readerModalBodyEl.scrollTop = 0;
+        }
+      }, 120);
+    }
+  }
+
   renderArticleModalContent(article, currentIndex, totalCount) {
+    // 1. Rendre la modale visible immédiatement pour que les dimensions de défilement existent dans le DOM
+    if (this.readerModalEl) {
+      this.readerModalEl.classList.remove('hidden');
+      document.documentElement.classList.add('modal-open');
+      document.body.classList.add('modal-open');
+    }
+
     // Marquer automatiquement comme lu à l'ouverture
     if (window.rssStore && !this.readArticles.has(article.link)) {
       window.rssStore.setArticleRead(article.link, true);
@@ -873,7 +904,8 @@ class RssFullWidget {
     }
 
     if (this.readerModalBodyEl) {
-      let contentHtml = article.content || `<p class="leading-relaxed text-zinc-300 text-sm">${article.excerpt || ''}</p>`;
+      let contentHtml = (article.content || `<p class="leading-relaxed text-zinc-300 text-sm">${article.excerpt || ''}</p>`)
+        .replace(/\bautofocus\b/gi, '');
       
       // Image d'en-tête si présente et non déjà incluse dans le corps
       let coverImageHtml = '';
@@ -963,7 +995,19 @@ class RssFullWidget {
       }
 
       this.readerModalBodyEl.innerHTML = coverImageHtml + contentHtml + extraHtml;
-      this.readerModalBodyEl.scrollTop = 0;
+
+      // Forcer le défilement tout en haut après l'injection
+      this.resetReaderScroll();
+
+      // Maintenir en haut pendant le chargement des images
+      const imgs = this.readerModalBodyEl.querySelectorAll('img');
+      imgs.forEach(img => {
+        img.addEventListener('load', () => {
+          if (this.readerModalBodyEl && this.readerModalBodyEl.scrollTop < 60) {
+            this.readerModalBodyEl.scrollTop = 0;
+          }
+        }, { once: true });
+      });
     }
 
     if (this.readerModalLinkEl) {
@@ -980,16 +1024,18 @@ class RssFullWidget {
       this.readerModalNextBtn.classList.toggle('opacity-30', currentIndex >= totalCount - 1);
     }
 
-    if (this.readerModalEl) {
-      this.readerModalEl.classList.remove('hidden');
-      document.documentElement.classList.add('modal-open');
-      document.body.classList.add('modal-open');
+    // Focus sur le bouton fermer sans faire défiler
+    if (this.readerModalCloseBtn) {
+      try { this.readerModalCloseBtn.focus({ preventScroll: true }); } catch {}
     }
   }
 
   closeReaderModal() {
     if (this.readerModalEl) {
       this.readerModalEl.classList.add('hidden');
+    }
+    if (this.readerModalBodyEl) {
+      this.readerModalBodyEl.scrollTop = 0;
     }
     document.documentElement.classList.remove('modal-open');
     document.body.classList.remove('modal-open');
