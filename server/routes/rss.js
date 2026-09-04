@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { fetchRSSFeed, DEFAULT_FEEDS } from '../services/rssService.js';
+import { fetchRSSFeed, extractDirectUrl, DEFAULT_FEEDS } from '../services/rssService.js';
 import { extractCleanArticleContent } from '../services/watchService.js';
+
 import {
   getRssFeeds,
   addRssFeed,
@@ -187,8 +188,19 @@ const CONTENT_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
  * Extrait le contenu intégral d'un article à partir de son URL (Mode Lecteur)
  */
 router.get('/full-content', async (req, res) => {
-  const articleUrl = req.query.url;
-  if (!articleUrl) return res.status(400).json({ error: 'URL requise' });
+  const rawUrl = req.query.url;
+  if (!rawUrl) return res.status(400).json({ error: 'URL requise' });
+  const articleUrl = extractDirectUrl(rawUrl);
+
+  // Les liens Google News ne peuvent pas être extraits sans navigateur headless (page consent 580ko)
+  if (articleUrl.includes('news.google.com')) {
+    return res.json({
+      success: false,
+      reason: 'google_news',
+      message: 'Article agrégé par Google Actualités. Ouverture directe recommandée.',
+      directUrl: articleUrl
+    });
+  }
 
   const cached = articleContentCache.get(articleUrl);
   if (cached && (Date.now() - cached.timestamp < CONTENT_CACHE_TTL_MS)) {
@@ -200,8 +212,18 @@ router.get('/full-content', async (req, res) => {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
       },
-      signal: AbortSignal.timeout(4500)
+      signal: AbortSignal.timeout(2500)
     });
+
+    if (response.status === 401 || response.status === 402 || response.status === 403) {
+      const result = {
+        success: false,
+        reason: 'paywall',
+        message: 'Cet article est sous paywall ou réservé aux abonnés de ce média.'
+      };
+      articleContentCache.set(articleUrl, { data: result, timestamp: Date.now() });
+      return res.json(result);
+    }
 
     if (!response.ok) {
       return res.status(502).json({ error: `Erreur HTTP ${response.status}` });
@@ -221,11 +243,20 @@ router.get('/full-content', async (req, res) => {
       }
     }
 
-    const result = { success: true, content, image };
+    const result = {
+      success: Boolean(content && content.length > 80),
+      content: content || null,
+      image
+    };
+
     articleContentCache.set(articleUrl, { data: result, timestamp: Date.now() });
     res.json(result);
   } catch (err) {
-    res.status(500).json({ error: `Erreur d'extraction: ${err.message}` });
+    res.json({
+      success: false,
+      reason: 'timeout_or_error',
+      message: 'Impossible d’extraire le contenu complet dans le délai imparti.'
+    });
   }
 });
 

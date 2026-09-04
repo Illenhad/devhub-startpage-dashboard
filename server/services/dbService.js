@@ -258,29 +258,30 @@ export async function initDatabase() {
     console.warn('⚠️ [Turso] Erreur lecture settings initDatabase:', err.message);
   }
 
-  // 3. Si Turso est configuré et activé, tenter la connexion en mode Embedded Replica
-  if (syncConfig.syncUrl && syncConfig.authToken && syncConfig.enabled) {
-    try {
-      const replicaClient = await createReplicaWithRetry(syncConfig.syncUrl, syncConfig.authToken);
-      await migrateLocalDataToReplica(localClient, replicaClient);
+  // Le client local est immédiatement actif pour répondre sans latence réseau (0 ms)
+  client = localClient;
+  isReplicaActive = false;
 
-      localClient.close();
-      client = replicaClient;
-      isReplicaActive = true;
-      lastSyncAt = new Date().toISOString();
-      lastSyncStatus = 'success';
-      lastSyncError = null;
-      console.log(`🌐 [Turso] Mode Embedded Replica connecté avec succès vers : ${syncConfig.syncUrl}`);
-    } catch (err) {
-      console.warn('⚠️ [Turso] Échec initialisation réplica, maintien du client local autonome:', err.message);
-      client = localClient;
-      isReplicaActive = false;
-      lastSyncStatus = 'error';
-      lastSyncError = err.message;
-    }
+  // 3. Si Turso est configuré et activé, synchroniser en tâche de fond sans bloquer le démarrage
+  if (syncConfig.syncUrl && syncConfig.authToken && syncConfig.enabled) {
+    createReplicaWithRetry(syncConfig.syncUrl, syncConfig.authToken)
+      .then(async (replicaClient) => {
+        await migrateLocalDataToReplica(localClient, replicaClient);
+        try { localClient.close(); } catch {}
+        client = replicaClient;
+        isReplicaActive = true;
+        lastSyncAt = new Date().toISOString();
+        lastSyncStatus = 'success';
+        lastSyncError = null;
+        console.log(`🌐 [Turso] Mode Embedded Replica connecté avec succès vers : ${syncConfig.syncUrl}`);
+      })
+      .catch((err) => {
+        console.warn('⚠️ [Turso] Échec initialisation réplica, maintien du client local autonome:', err.message);
+        isReplicaActive = false;
+        lastSyncStatus = 'error';
+        lastSyncError = err.message;
+      });
   } else {
-    client = localClient;
-    isReplicaActive = false;
     console.log(`📁 [SQLite] Mode local autonome actif (${dbPath})`);
   }
 
@@ -339,7 +340,7 @@ async function seedDefaults(c) {
     if (countFeeds === 0) {
       const defaults = [
         ['korben', 'Korben.info (Complet)', 'https://korben.info/feedfull', 'Tech & Hacks', '⚡', 1],
-        ['hackernews', 'Hacker News', 'https://news.ycombinator.com/rss', 'Dev & Startups', '🔶', 2],
+        ['numerama', 'Numerama', 'https://www.numerama.com/feed/', 'Tech & IA', '⚡', 2],
         ['lemonde-pixels', 'Le Monde Pixels', 'https://www.lemonde.fr/pixels/rss_full.xml', 'Culture Web', '🌍', 3]
       ];
       for (const [id, name, url, cat, icon, pos] of defaults) {

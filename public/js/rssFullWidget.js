@@ -251,7 +251,14 @@ class RssFullWidget {
       setTimeout(() => icon.classList.remove('animate-spin'), 600);
     }
 
-    if (!window.rssStore?.isLoaded && (!window.rssStore?.masterArticles || window.rssStore.masterArticles.length === 0)) {
+    // 1. Affichage instantané (0 ms) à partir des articles déjà en mémoire
+    const active = window.rssStore?.getActiveMasterArticles() || [];
+    if (active.length > 0) {
+      this.articles = active;
+      this.updateHeader();
+      this.renderArticles();
+      if (!isManual) return;
+    } else {
       this.showLoading('Chargement du flux unifié (Flux RSS + Veille)...');
     }
 
@@ -264,7 +271,9 @@ class RssFullWidget {
       this.renderSidebar();
       this.renderArticles();
     } catch (err) {
-      this.showError('Impossible de charger le flux unifié', err.message, () => this.selectUnified(true));
+      if (this.articles.length === 0) {
+        this.showError('Impossible de charger le flux unifié', err.message, () => this.selectUnified(true));
+      }
     }
   }
 
@@ -276,7 +285,6 @@ class RssFullWidget {
     this.activeDesc = `Actualités en direct et surveillance pour le mot-clé "${keyword}"`;
 
     this.renderSidebar();
-    this.showLoading(`Recherche des actualités pour "${keyword}"...`);
 
     if (isManual && this.refreshBtn) {
       const icon = this.refreshBtn.querySelector('svg') || this.refreshBtn;
@@ -284,11 +292,23 @@ class RssFullWidget {
       setTimeout(() => icon.classList.remove('animate-spin'), 600);
     }
 
-    try {
-      if (window.rssStore && !window.rssStore.isLoaded && window.rssStore.masterArticles.length === 0) {
-        window.rssStore.fetchUnified(false).catch(() => {});
-      }
+    // 1. Recherche instantanée dans les articles déjà en mémoire (masterArticles)
+    const clean = keyword.toLowerCase().trim();
+    const cachedItems = (window.rssStore?.masterArticles || []).filter(a => {
+      const kw = (a.watchKeyword || '').toLowerCase().trim();
+      return kw === clean || (a.type === 'watch' && kw.includes(clean));
+    });
 
+    if (cachedItems.length > 0) {
+      this.articles = cachedItems.slice().sort((a, b) => this.getArticleTimestamp(b) - this.getArticleTimestamp(a));
+      this.updateHeader();
+      this.renderArticles();
+      if (!isManual) return;
+    } else {
+      this.showLoading(`Recherche des actualités pour "${keyword}"...`);
+    }
+
+    try {
       const res = await fetch(`/api/watch/feed?keyword=${encodeURIComponent(keyword)}`);
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Erreur recherche');
@@ -299,7 +319,9 @@ class RssFullWidget {
       this.renderSidebar();
       this.renderArticles();
     } catch (err) {
-      this.showError(`Impossible de récupérer la veille pour "${keyword}"`, err.message, () => this.selectKeyword(keyword, true));
+      if (cachedItems.length === 0) {
+        this.showError(`Impossible de récupérer la veille pour "${keyword}"`, err.message, () => this.selectKeyword(keyword, true));
+      }
     }
   }
 
@@ -314,7 +336,6 @@ class RssFullWidget {
     this.activeDesc = feed ? `Flux RSS : ${feed.url}` : 'Actualités du flux';
 
     this.renderSidebar();
-    this.showLoading(`Chargement des articles de ${feedName}...`);
 
     if (isManual && this.refreshBtn) {
       const icon = this.refreshBtn.querySelector('svg') || this.refreshBtn;
@@ -322,11 +343,24 @@ class RssFullWidget {
       setTimeout(() => icon.classList.remove('animate-spin'), 600);
     }
 
-    try {
-      if (window.rssStore && !window.rssStore.isLoaded && window.rssStore.masterArticles.length === 0) {
-        window.rssStore.fetchUnified(false).catch(() => {});
-      }
+    // 1. Recherche instantanée dans les articles déjà en mémoire (masterArticles)
+    const cachedItems = (window.rssStore?.masterArticles || []).filter(a => {
+      if (a.feedUrl && a.feedUrl === url) return true;
+      if (a.feedId && feed?.id && a.feedId === feed.id) return true;
+      if (a.feedName && a.feedName.toLowerCase().trim() === feedName.toLowerCase().trim()) return true;
+      return false;
+    });
 
+    if (cachedItems.length > 0) {
+      this.articles = cachedItems.slice().sort((a, b) => this.getArticleTimestamp(b) - this.getArticleTimestamp(a));
+      this.updateHeader();
+      this.renderArticles();
+      if (!isManual) return;
+    } else {
+      this.showLoading(`Chargement des articles de ${feedName}...`);
+    }
+
+    try {
       const res = await fetch(`/api/rss?url=${encodeURIComponent(url)}`);
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Erreur flux RSS');
@@ -348,7 +382,9 @@ class RssFullWidget {
       this.renderSidebar();
       this.renderArticles();
     } catch (err) {
-      this.showError(`Impossible de charger le flux "${feedName}"`, err.message, () => this.selectFeed(url, true));
+      if (cachedItems.length === 0) {
+        this.showError(`Impossible de charger le flux "${feedName}"`, err.message, () => this.selectFeed(url, true));
+      }
     }
   }
 
@@ -849,45 +885,50 @@ class RssFullWidget {
         `;
       }
 
-      // Si le contenu est court (moins de 250 caractères, typique des flux limités aux résumés comme Le Monde)
+      // Si le contenu est court (moins de 250 caractères, typique des résumés de flux ou agrégateurs)
       const textOnly = contentHtml.replace(/<[^>]+>/g, '').trim();
-      let sourceCalloutHtml = '';
-      let autoLoadIndicatorHtml = '';
+      let extraHtml = '';
 
       if (textOnly.length < 250) {
-        sourceCalloutHtml = `
-          <div class="mt-6 p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        const isGoogleNews = article.link && article.link.includes('news.google.com');
+        const mediaSource = article.feedName || article.author || 'le site d’origine';
+
+        const sourceCalloutHtml = `
+          <div class="mt-5 p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             <div class="space-y-0.5">
               <span class="font-bold text-zinc-200 flex items-center gap-1.5">
-                <span>🔒</span> <span>Article complet sur ${article.feedName || 'le site source'}</span>
+                <span>🌐</span> <span>Lire l'intégralité sur ${mediaSource}</span>
               </span>
-              <p class="text-[11px] text-zinc-400">Ce média ne diffuse qu'un extrait dans son flux RSS ou est sous paywall.</p>
+              <p class="text-[11px] text-zinc-400">
+                ${isGoogleNews ? 'Article externe agrégé par Google Actualités.' : 'Ce média publie un extrait court dans son flux RSS.'}
+              </p>
             </div>
             <a
               href="${article.link}"
               target="_blank"
               rel="noopener noreferrer"
-              class="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-95 text-white font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 shadow-md shadow-brand-500/20"
+              class="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-95 text-white font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 shadow-md shadow-brand-500/20 cursor-pointer"
             >
-              <span>Ouvrir sur le site</span>
+              <span>Ouvrir l'article</span>
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
             </a>
           </div>
         `;
 
-        // Ne déclencher le chargement automatique qu'une seule fois par article (évite toute boucle infinie)
-        if (!article._fullContentAttempted) {
+        if (!isGoogleNews && !article._fullContentAttempted) {
           article._fullContentAttempted = true;
 
-          autoLoadIndicatorHtml = `
-            <div id="reader-autoload-indicator" class="mt-4 p-3.5 rounded-2xl bg-zinc-950/70 border border-zinc-800/80 flex items-center justify-between gap-3 text-xs animate-pulse">
-              <div class="flex items-center gap-2.5 text-zinc-300 font-semibold">
-                <span class="w-2 h-2 rounded-full notif-badge-dot animate-ping"></span>
-                <span>Chargement automatique de l'article complet...</span>
-              </div>
-              <span class="text-[10px] text-zinc-500 font-mono">Mode Lecteur</span>
+          const indicatorHtml = `
+            <div id="reader-autoload-indicator" class="mt-3 p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/60 flex items-center justify-between text-xs text-zinc-400">
+              <span class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full notif-badge-dot animate-ping"></span>
+                <span>Tentative d'extraction du mode lecteur...</span>
+              </span>
+              <span class="text-[10px] font-mono text-zinc-500">Mode Lecteur</span>
             </div>
           `;
+
+          extraHtml = sourceCalloutHtml + indicatorHtml;
 
           const currentIdx = currentIndex;
           fetch(`/api/rss/full-content?url=${encodeURIComponent(article.link)}`)
@@ -898,28 +939,30 @@ class RssFullWidget {
                 if (!article.image && data.image) {
                   article.image = data.image;
                 }
-                // Si l'utilisateur est toujours sur cet article, injecter directement le corps complet sans récursion
                 if (this.currentArticleIndex === currentIdx && this.readerModalBodyEl) {
                   const loader = document.getElementById('reader-autoload-indicator');
                   if (loader) {
-                    loader.outerHTML = data.content;
-                  } else {
-                    this.readerModalBodyEl.innerHTML = coverImageHtml + data.content;
+                    loader.outerHTML = `<div class="mt-4 pt-4 border-t border-zinc-800">${data.content}</div>`;
                   }
                 }
               } else {
                 const loader = document.getElementById('reader-autoload-indicator');
-                if (loader) loader.outerHTML = sourceCalloutHtml;
+                if (loader) {
+                  const reasonMsg = data.reason === 'paywall' ? 'Article réservé aux abonnés (paywall).' : 'Mode lecteur indisponible pour cette page.';
+                  loader.outerHTML = `<p class="mt-2 text-[10px] text-zinc-500 font-mono italic">${reasonMsg}</p>`;
+                }
               }
             })
             .catch(() => {
               const loader = document.getElementById('reader-autoload-indicator');
-              if (loader) loader.outerHTML = sourceCalloutHtml;
+              if (loader) loader.remove();
             });
+        } else {
+          extraHtml = sourceCalloutHtml;
         }
       }
 
-      this.readerModalBodyEl.innerHTML = coverImageHtml + contentHtml + (autoLoadIndicatorHtml || (article._fullContentAttempted ? sourceCalloutHtml : ''));
+      this.readerModalBodyEl.innerHTML = coverImageHtml + contentHtml + extraHtml;
       this.readerModalBodyEl.scrollTop = 0;
     }
 

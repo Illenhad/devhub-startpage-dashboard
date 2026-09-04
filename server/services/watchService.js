@@ -1,5 +1,6 @@
-import { fetchRSSFeed, MAX_ARTICLE_AGE_DAYS, MAX_ARTICLE_AGE_MS } from './rssService.js';
+import { fetchRSSFeed, extractDirectUrl, decodeHtmlEntities, MAX_ARTICLE_AGE_DAYS, MAX_ARTICLE_AGE_MS } from './rssService.js';
 import { getRssFeeds, getWatchKeywords, cleanupOldReadArticles } from './dbService.js';
+
 
 // Cache des flux de veille (TTL: 10 minutes)
 const watchCache = new Map();
@@ -150,7 +151,7 @@ export async function resolveGoogleNewsArticle(googleUrl) {
     // 2. Appel batchexecute RPC (Fbv4je) pour obtenir l'URL finale
     const payload = [
       "Fbv4je",
-      `["garturlreq",[["X","X",["X","X"],null,null,1,1,"US:en",null,1,null,null,null,null,null,0,1],"X","X",1,[1,1,1],1,1,null,0,0,null,0],"${base64Str}",${timestamp},"${signature}"]`
+      `["garturlreq",[["X","X",["X","X"],null,null,1,1,"FR:fr",null,1,null,null,null,null,null,0,1],"X","X",1,[1,1,1],1,1,null,0,0,null,0],"${base64Str}",${timestamp},"${signature}"]`
     ];
 
     const batchRes = await fetch("https://news.google.com/_/DotsSplashUi/data/batchexecute", {
@@ -215,7 +216,136 @@ export async function resolveGoogleNewsArticle(googleUrl) {
 }
 
 /**
- * Récupère les actualités fraîches pour un mot-clé donné via Google News RSS FR (7 derniers jours max)
+ * Résout les métadonnées (URL directe, OpenGraph image, contenu éditorial) d'un article
+ */
+export async function resolveArticleMetadata(articleUrl) {
+  if (!articleUrl || typeof articleUrl !== 'string') return null;
+
+  const directUrl = extractDirectUrl(articleUrl);
+  if (directUrl.includes('news.google.com')) {
+    return resolveGoogleNewsArticle(directUrl);
+  }
+
+  const cached = articleMetadataCache.get(directUrl);
+  if (cached && (Date.now() - cached.timestamp < ARTICLE_CACHE_TTL_MS)) {
+    return cached.data;
+  }
+
+  try {
+    const artRes = await fetch(directUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+      },
+      signal: AbortSignal.timeout(3000)
+    });
+
+    let image = null;
+    let content = null;
+
+    if (artRes.ok) {
+      const artHtml = await artRes.text();
+      const ogMatch = artHtml.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+                      artHtml.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i) ||
+                      artHtml.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i);
+      if (ogMatch && ogMatch[1]) {
+        image = ogMatch[1].trim();
+        if (image.startsWith('/')) {
+          const destUrlObj = new URL(directUrl);
+          image = `${destUrlObj.origin}${image}`;
+        }
+      }
+
+      const extracted = extractCleanArticleContent(artHtml, directUrl);
+      if (extracted && extracted.length > 100) {
+        content = extracted;
+      }
+    }
+
+    const result = { decodedUrl: directUrl, image, content };
+    articleMetadataCache.set(directUrl, { data: result, timestamp: Date.now() });
+    return result;
+  } catch {
+    return { decodedUrl: directUrl, image: null, content: null };
+  }
+}
+
+/**
+ * Détecte si un titre / extrait d'article est rédigé en langue française
+ */
+export function isFrenchText(title = '', excerpt = '') {
+  const fullText = (title + ' ' + excerpt).trim();
+  if (!fullText) return false;
+  const str = fullText.toLowerCase();
+
+  // 1. Rejet immédiat si présence de caractères non-français (espagnol, portugais, allemand, cyrillique, etc.)
+  // En français : é, è, ê, ë, à, â, ç, î, ï, ô, û, œ, æ, ù (uniquement dans 'où')
+  // Caractères étrangers : ó, á, í, ú, ñ, ¿, ¡, ä, ö, ü, ß, å, ø, ã, õ, etc.
+  if (/[óáíúñ¿¡äöüßåøãõčćšžłńśźż\u0400-\u04FF\u4E00-\u9FFF\u0600-\u06FF]/i.test(str)) {
+    return false;
+  }
+
+  // 2. Caractères et contractions typiques de la langue française
+  const hasFrenchDiacritics = /[éèêëàâçîïôûœæ]|(\b(d|l|c|qu|j|n|s|m|t)['’])|(\boù\b)/i.test(str);
+
+  // 3. Mots indicateurs d'autres langues (Espagnol, Italien, Allemand, etc.)
+  const foreignWords = new Set([
+    'cómo','como','para','por','con','del','las','los','una','unos','unas','sus','su','sin','sobre',
+    'este','esta','estos','estas','tu','tus','mi','mis','hacer','propio','ordenador','casa','así',
+    'nuevo','nueva','nuevos','nuevas','más','pero','todos','todas','centro','datos','computadoras',
+    'posible','funciona','programa','precios','instalar','configurar','montar','lenguaje','puede',
+    'pueden','desde','entre','hasta','también','tambien','red','pantalla','juegos','ahora',
+    'unisce','due','volte','più','veloci','degli','delle','della','dello','hanno','sono','anche',
+    'und','der','die','das','nicht','mit','für','auf','eine','einer','einem','einen'
+  ]);
+
+  // 4. Mots indicateurs anglais fréquents
+  const enWords = new Set([
+    'the','and','is','in','to','of','with','for','on','at','by','from','as','that','this','these','those',
+    'are','was','were','been','be','have','has','had','will','would','could','should','about','which',
+    'their','its','our','what','how','why','when','who','where','review','using','into','after','before',
+    'without','against','pools','your','home','gpus','run','agents','twice','fast','free','launches','announces',
+    'features','update','release','guide','best','top','new','news','today','first','world','over','more','than',
+    'you','all','can','users','desktop','ships','downloads','subscription','annual','revenue','deployment'
+  ]);
+
+  // 5. Mots fréquents en français
+  const frWords = new Set([
+    'le','la','les','un','une','des','du','de','dans','en','pour','sur','avec','ce','cette','ces','cet',
+    'qui','que','quoi','dont','où','est','sont','a','ont','au','aux','par','plus','ou','et','mais','donc',
+    'car','ni','pas','se','sa','son','ses','leur','leurs','nous','vous','ils','elles','tout','tous','toute',
+    'toutes','comme','fait','faire','être','avoir','sans','selon','après','avant','chez','depuis','pendant',
+    'vers','nouvel','nouveau','nouvelle','nouveaux','actu','actus','actualité','actualités','guide','comment',
+    'pourquoi','quand','quel','quelle','quels','quelles','votre','notre','vos','nos','aussi','bien','très',
+    'peu','ici','relie','maison','rapides','deux','fois','partager','réseau','local','locale','bientôt',
+    'semaine','mois','année','jours','dernière','prochaine','première','annoncé','dévoile','présente','test',
+    'faire','peut','peuvent','toujours','encore','déjà','même','autres','autre','plusieurs','alors','ainsi',
+    'surfer','flipper','navigateur','jetable','redémarrer','conteneur','gourmand','véritable','poche'
+  ]);
+
+  const words = str.match(/[a-zà-ÿ0-9'’-]+/gi) || [];
+  let frScore = 0;
+  let enScore = 0;
+  let foreignScore = 0;
+
+  if (hasFrenchDiacritics) {
+    frScore += 3;
+  }
+
+  for (const w of words) {
+    const cleanW = w.replace(/['’].*$/, '');
+    if (foreignWords.has(w) || foreignWords.has(cleanW)) foreignScore += 3;
+    if (enWords.has(w) || enWords.has(cleanW)) enScore += 1.5;
+    if (frWords.has(w) || frWords.has(cleanW)) frScore += 1.5;
+  }
+
+  if (foreignScore > 0) return false;
+  if (enScore > frScore) return false;
+  if (frScore > enScore) return true;
+  return frScore >= 3;
+}
+
+/**
+ * Récupère les actualités fraîches francophones pour un mot-clé donné via multi-sources (Bing News FR + Google News FR)
  */
 export async function fetchKeywordNews(keyword) {
   if (!keyword || !keyword.trim()) return { items: [] };
@@ -228,19 +358,55 @@ export async function fetchKeywordNews(keyword) {
     return { ...cached.data, fromCache: true };
   }
 
-  // Requête Google News limitée à la dernière semaine (when:7d)
-  const searchUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(cleanKeyword + ' when:7d')}&hl=fr&gl=FR&ceid=FR:fr`;
+  const cutoff = Date.now() - MAX_ARTICLE_AGE_MS;
+
+  // URLs multi-sources résilientes ciblées France / Français
+  // 1. Bing News RSS FR avec tri par date décroissante
+  const bingDateUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(cleanKeyword)}&setlang=fr-FR&mkt=fr-FR&cc=FR&qft=sortbydate%3d"1"&format=rss`;
+  // 2. Google News RSS FR avec tri par date (scoring=n)
+  const googleFrUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(cleanKeyword)}&hl=fr&gl=FR&ceid=FR:fr&scoring=n`;
 
   try {
-    const rawData = await fetchRSSFeed(searchUrl);
-    const rawItems = rawData.items || [];
-    const cutoff = Date.now() - MAX_ARTICLE_AGE_MS;
+    const fetchSource = async (url) => {
+      try {
+        const data = await fetchRSSFeed(url);
+        return data.items || [];
+      } catch (e) {
+        return [];
+      }
+    };
 
-    // Nettoyer, filtrer (7 jours max) et enrichir les articles de veille
-    const items = rawItems
-      .filter(item => !item.timestamp || item.timestamp >= cutoff)
-      .map(item => {
-      let title = item.title || '';
+    // Requêtes concurrentes pour une réactivité optimale
+    const [bingItems, googleItems] = await Promise.all([
+      fetchSource(bingDateUrl),
+      fetchSource(googleFrUrl)
+    ]);
+
+    let rawItems = [...bingItems, ...googleItems];
+
+    // Repli Bing FR standard si aucun article récent n'a été trouvé par les requêtes datées
+    if (rawItems.length === 0) {
+      const bingFallbackUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(cleanKeyword)}&setlang=fr-FR&mkt=fr-FR&cc=FR&format=rss`;
+      const fallbackItems = await fetchSource(bingFallbackUrl);
+      rawItems = fallbackItems;
+    }
+
+    // Déduplication intelligente et filtrage des articles francophones (< 7 jours)
+    const seenLinks = new Set();
+    const seenTitles = new Set();
+    const items = [];
+
+    for (const item of rawItems) {
+      if (!item || !item.link) continue;
+      if (item.timestamp && item.timestamp < cutoff) continue;
+
+      const directLink = extractDirectUrl(item.link);
+      item.link = directLink;
+
+      if (seenLinks.has(directLink)) continue;
+      seenLinks.add(directLink);
+
+      let title = decodeHtmlEntities(item.title || '');
       let author = item.author || '';
 
       // Extraction propre de la source dans le titre (ex: "Titre de la news - Nom Du Média")
@@ -253,7 +419,17 @@ export async function fetchKeywordNews(keyword) {
         }
       }
 
-      return {
+      // Filtrage strict : Ne conserver par défaut que les articles en français
+      if (!isFrenchText(title, item.excerpt || '')) {
+        continue;
+      }
+
+      // Déduplication par similarité de titre court normalisé
+      const normTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 35);
+      if (normTitle && seenTitles.has(normTitle)) continue;
+      if (normTitle) seenTitles.add(normTitle);
+
+      items.push({
         ...item,
         title,
         author: author || 'Actualité Tech',
@@ -262,31 +438,35 @@ export async function fetchKeywordNews(keyword) {
         feedName: `Veille: ${cleanKeyword}`,
         feedIcon: '🎯',
         feedCategory: 'Veille'
-      };
-    });
+      });
+    }
 
     // Tri par date la plus récente
     items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
-    // Résolution asynchrone en parallèle des images (OpenGraph) et des URLs directes des médias
-    const resolvePromises = items.slice(0, 15).map(async (item) => {
-      try {
-        const meta = await resolveGoogleNewsArticle(item.link);
-        if (meta) {
-          if (meta.decodedUrl) item.link = meta.decodedUrl;
-          if (meta.image) item.image = meta.image;
-          if (meta.content) item.content = meta.content;
-        }
-      } catch {}
-    });
-
-    await Promise.allSettled(resolvePromises);
+    // Résolution en tâche de fond non bloquante (ne ralentit pas la réponse API)
+    setTimeout(() => {
+      items.slice(0, 10).forEach(async (item) => {
+        try {
+          if (item.link && item.link.includes('news.google.com')) {
+            const meta = await resolveGoogleNewsArticle(item.link);
+            if (meta) {
+              if (meta.decodedUrl) item.link = meta.decodedUrl;
+              if (meta.image && !item.image) item.image = meta.image;
+            }
+          } else if (item.link && !item.image) {
+            const meta = await resolveArticleMetadata(item.link);
+            if (meta && meta.image) item.image = meta.image;
+          }
+        } catch {}
+      });
+    }, 50);
 
     const result = {
       keyword: cleanKeyword,
       title: `Veille sur "${cleanKeyword}"`,
       description: `Actualités en direct pour le mot-clé "${cleanKeyword}"`,
-      feedUrl: searchUrl,
+      feedUrl: bingDateUrl,
       items,
       itemCount: items.length,
       updatedAt: new Date().toISOString()
@@ -304,11 +484,28 @@ export async function fetchKeywordNews(keyword) {
   }
 }
 
+
+// Cache du flux unifié (TTL: 3 minutes)
+let unifiedCache = null;
+let unifiedCacheTime = 0;
+const UNIFIED_CACHE_TTL_MS = 3 * 60 * 1000;
+
+export function invalidateUnifiedCache() {
+  unifiedCache = null;
+  unifiedCacheTime = 0;
+}
+
 /**
  * Récupère l'ensemble des articles agrégés : Tous les flux RSS suivis + Tous les mots-clés de veille
  */
-export async function getUnifiedNewsFeed() {
-  await cleanupOldReadArticles(1);
+export async function getUnifiedNewsFeed(forceRefresh = false) {
+  if (!forceRefresh && unifiedCache && (Date.now() - unifiedCacheTime < UNIFIED_CACHE_TTL_MS)) {
+    return { ...unifiedCache, fromCache: true };
+  }
+
+  // Nettoyage asynchrone non bloquant des anciens articles lus
+  cleanupOldReadArticles(1).catch(() => {});
+
   const feeds = (await getRssFeeds()) || [];
   const allKeywords = (await getWatchKeywords()) || [];
   const keywords = allKeywords.filter(k => k.enabled);
@@ -378,7 +575,7 @@ export async function getUnifiedNewsFeed() {
   // Trier par date la plus récente
   allArticles.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
-  return {
+  const result = {
     title: 'Veille & Flux RSS Réunis',
     description: `Flux unifié des 7 derniers jours comprenant ${feeds.length} flux RSS et ${keywords.length} sujets de veille surveillés`,
     totalFeeds: feeds.length,
@@ -387,6 +584,11 @@ export async function getUnifiedNewsFeed() {
     items: allArticles,
     updatedAt: new Date().toISOString()
   };
+
+  unifiedCache = result;
+  unifiedCacheTime = Date.now();
+
+  return result;
 }
 
 /**
@@ -411,7 +613,12 @@ export function startPeriodicCrawler(intervalMinutes = 15) {
 }
 
 export default {
+  isFrenchText,
   fetchKeywordNews,
   getUnifiedNewsFeed,
-  startPeriodicCrawler
+  invalidateUnifiedCache,
+  startPeriodicCrawler,
+  resolveArticleMetadata,
+  resolveGoogleNewsArticle
 };
+

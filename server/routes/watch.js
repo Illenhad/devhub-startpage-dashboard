@@ -86,8 +86,9 @@ router.get('/feed', async (req, res) => {
  * Récupère le flux d'actualités unifié (Flux RSS + Veille par mots-clés)
  */
 router.get('/unified', async (req, res) => {
+  const force = req.query.force === 'true';
   try {
-    const data = await getUnifiedNewsFeed();
+    const data = await getUnifiedNewsFeed(force);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: `Erreur flux unifié: ${err.message}` });

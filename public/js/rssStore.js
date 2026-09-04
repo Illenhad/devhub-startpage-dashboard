@@ -79,6 +79,7 @@ class RssStore {
       const rawMaster = localStorage.getItem('devhub_rss_master_cache');
       if (rawMaster) {
         this.masterArticles = JSON.parse(rawMaster);
+        this.isLoaded = true;
       }
     } catch (e) {
       console.warn('Erreur initialisation locale RssStore:', e);
@@ -138,7 +139,8 @@ class RssStore {
 
     this.isLoading = true;
     try {
-      const res = await fetch('/api/watch/unified');
+      const url = forceRefresh ? '/api/watch/unified?force=true' : '/api/watch/unified';
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Erreur flux unifié');
       const data = await res.json();
       const items = (data.items || []).slice().sort((a, b) => this.getArticleTimestamp(b) - this.getArticleTimestamp(a));

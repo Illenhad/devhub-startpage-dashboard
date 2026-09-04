@@ -21,12 +21,12 @@ export const DEFAULT_FEEDS = [
     description: 'Les articles complets de Korben : actus tech, sécurité, astuces et IA.'
   },
   {
-    id: 'hackernews',
-    name: 'Hacker News (Top)',
-    url: 'https://news.ycombinator.com/rss',
-    category: 'Développement & Startups',
-    icon: '🔶',
-    description: 'Actualités incontournables de la communauté tech mondiale.'
+    id: 'numerama',
+    name: 'Numerama (Tech & IA)',
+    url: 'https://www.numerama.com/feed/',
+    category: 'Tech, IA & Société',
+    icon: '⚡',
+    description: 'Actualités tech, intelligence artificielle, sciences et culture numérique.'
   },
   {
     id: 'lemonde-pixels',
@@ -39,12 +39,18 @@ export const DEFAULT_FEEDS = [
 ];
 
 /**
- * Décode les entités HTML courantes
+ * Décode les entités HTML courantes et numériques
  */
 export function decodeHtmlEntities(str) {
   if (!str) return '';
   return str
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/&#(\d+);/g, (_, dec) => {
+      try { return String.fromCharCode(parseInt(dec, 10)); } catch { return ''; }
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+      try { return String.fromCharCode(parseInt(hex, 16)); } catch { return ''; }
+    })
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
@@ -56,6 +62,22 @@ export function decodeHtmlEntities(str) {
     .replace(/&#8230;/g, '…')
     .replace(/&amp;/g, '&');
 }
+
+/**
+ * Extrait l'URL réelle d'un article depuis un lien de redirection (ex: Bing News apiclick)
+ */
+export function extractDirectUrl(url) {
+  if (!url || typeof url !== 'string') return url || '';
+  if (url.includes('bing.com/news/apiclick.aspx') || url.includes('bing.com/ck/a')) {
+    try {
+      const u = new URL(url);
+      const target = u.searchParams.get('url');
+      if (target) return target;
+    } catch {}
+  }
+  return url;
+}
+
 
 /**
  * Résout les URLs relatives des images et des liens vers l'URL absolue du domaine source
@@ -235,12 +257,16 @@ export function parseRSSXml(xml, fallbackUrl = '', maxAgeDays = MAX_ARTICLE_AGE_
     // Lien
     let link = '';
     const linkMatch = block.match(/<link[^>]+href="([^"]+)"/i) || block.match(/<link>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/link>/i);
-    if (linkMatch) link = linkMatch[1].replace(/&amp;/g, '&').trim();
+    if (linkMatch) {
+      const rawLink = linkMatch[1].replace(/&amp;/g, '&').trim();
+      link = extractDirectUrl(rawLink);
+    }
 
-    // Auteur
+    // Auteur / Source
     const authorMatch = block.match(/<dc:creator>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/dc:creator>/i) ||
                         block.match(/<author>[\s\S]*?<name>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/name>/i) ||
-                        block.match(/<author>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/author>/i);
+                        block.match(/<author>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/author>/i) ||
+                        block.match(/<(?:news:)?source[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/(?:news:)?source>/i);
     const author = authorMatch ? decodeHtmlEntities(authorMatch[1]).trim() : '';
 
     // Description / Contenu
@@ -259,12 +285,14 @@ export function parseRSSXml(xml, fallbackUrl = '', maxAgeDays = MAX_ARTICLE_AGE_
     let image = '';
     const mediaThumbMatch = block.match(/<media:thumbnail[^>]+url="([^"]+)"/i) ||
                             block.match(/<media:content[^>]+url="([^"]+)"/i) ||
+                            block.match(/<(?:news:)?image[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/(?:news:)?image>/i) ||
                             block.match(/<enclosure[^>]+url="([^"]+)"[^>]*type="image/i) ||
                             resolvedContent.match(/<img[^>]+src="([^">]+\.(?:jpg|jpeg|png|webp|gif|svg|avif)(?:\?[^">]*)?)"/i) ||
                             resolvedContent.match(/<img[^>]+src="([^">]+)"/i);
     if (mediaThumbMatch) {
-      image = mediaThumbMatch[1].replace(/&amp;/g, '&');
+      image = (mediaThumbMatch[1] || '').replace(/&amp;/g, '&').trim();
     }
+
 
     if (image && image.startsWith('/')) {
       image = `${origin}${image}`;
@@ -308,17 +336,17 @@ export function parseRSSXml(xml, fallbackUrl = '', maxAgeDays = MAX_ARTICLE_AGE_
 /**
  * Récupère et met en cache un flux RSS
  */
-export async function fetchRSSFeed(feedUrl) {
+export async function fetchRSSFeed(feedUrl, forceRefresh = false) {
   if (!feedUrl) throw new Error('URL du flux requise');
 
   // Vérification du Cache
   const cached = cache.get(feedUrl);
-  if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+  if (!forceRefresh && cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
     return { ...cached.data, fromCache: true };
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const timeoutId = setTimeout(() => controller.abort(), 4000);
 
   try {
     const res = await fetch(feedUrl, {
@@ -331,6 +359,7 @@ export async function fetchRSSFeed(feedUrl) {
     clearTimeout(timeoutId);
 
     if (!res.ok) {
+      if (cached) return { ...cached.data, fromCache: true, stale: true };
       throw new Error(`Échec HTTP ${res.status}: ${res.statusText}`);
     }
 
@@ -346,6 +375,10 @@ export async function fetchRSSFeed(feedUrl) {
     return parsed;
   } catch (err) {
     clearTimeout(timeoutId);
+    if (cached) {
+      console.warn(`[RSS] Repli sur le cache pour ${feedUrl} suite à latence/erreur: ${err.message}`);
+      return { ...cached.data, fromCache: true, stale: true };
+    }
     console.error(`Erreur fetchRSSFeed (${feedUrl}):`, err.message);
     throw err;
   }
@@ -357,6 +390,8 @@ export default {
   formatDate,
   decodeHtmlEntities,
   resolveRelativeUrls,
+  extractDirectUrl,
   parseRSSXml,
   fetchRSSFeed
 };
+
