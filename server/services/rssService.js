@@ -384,6 +384,65 @@ export async function fetchRSSFeed(feedUrl, forceRefresh = false) {
   }
 }
 
+/**
+ * Récupère le HTML d'une page article avec stratégie adaptative (anti-bot / bypass 402 Le Monde)
+ */
+export async function fetchArticleHtml(articleUrl, timeoutMs = 3500) {
+  if (!articleUrl) throw new Error('URL requise');
+
+  const isLeMonde = /lemonde\.fr/i.test(articleUrl);
+  // Le Monde bloque les navigateurs de bureau avec une page défi 402 Fastly mais autorise les bots d'aperçu social
+  const primaryUa = isLeMonde
+    ? 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'
+    : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+  let response;
+  try {
+    response = await fetch(articleUrl, {
+      headers: {
+        'User-Agent': primaryUa,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7'
+      },
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+  } catch (err) {
+    if (!isLeMonde) {
+      try {
+        response = await fetch(articleUrl, {
+          headers: {
+            'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+          },
+          signal: AbortSignal.timeout(Math.min(timeoutMs, 2500))
+        });
+      } catch {
+        throw err;
+      }
+    } else {
+      throw err;
+    }
+  }
+
+  // Si refus d'accès (paywall / antibot / fastly), repli sur le crawler social
+  if ((response.status === 401 || response.status === 402 || response.status === 403) && !isLeMonde) {
+    try {
+      const retryRes = await fetch(articleUrl, {
+        headers: {
+          'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        },
+        signal: AbortSignal.timeout(Math.min(timeoutMs, 2500))
+      });
+      if (retryRes.ok) {
+        response = retryRes;
+      }
+    } catch {}
+  }
+
+  return response;
+}
+
 export default {
   DEFAULT_FEEDS,
   parseTimestamp,
@@ -392,6 +451,7 @@ export default {
   resolveRelativeUrls,
   extractDirectUrl,
   parseRSSXml,
-  fetchRSSFeed
+  fetchRSSFeed,
+  fetchArticleHtml
 };
 

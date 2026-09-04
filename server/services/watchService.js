@@ -1,4 +1,4 @@
-import { fetchRSSFeed, extractDirectUrl, decodeHtmlEntities, MAX_ARTICLE_AGE_DAYS, MAX_ARTICLE_AGE_MS } from './rssService.js';
+import { fetchRSSFeed, fetchArticleHtml, extractDirectUrl, decodeHtmlEntities, MAX_ARTICLE_AGE_DAYS, MAX_ARTICLE_AGE_MS } from './rssService.js';
 import { getRssFeeds, getWatchKeywords, cleanupOldReadArticles } from './dbService.js';
 
 
@@ -232,12 +232,7 @@ export async function resolveArticleMetadata(articleUrl) {
   }
 
   try {
-    const artRes = await fetch(directUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-      },
-      signal: AbortSignal.timeout(3000)
-    });
+    const artRes = await fetchArticleHtml(directUrl, 3000);
 
     let image = null;
     let content = null;

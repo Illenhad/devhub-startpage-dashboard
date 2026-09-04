@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { fetchRSSFeed, extractDirectUrl, DEFAULT_FEEDS } from '../services/rssService.js';
+import { fetchRSSFeed, fetchArticleHtml, extractDirectUrl, DEFAULT_FEEDS } from '../services/rssService.js';
 import { extractCleanArticleContent } from '../services/watchService.js';
 
 import {
@@ -208,21 +208,14 @@ router.get('/full-content', async (req, res) => {
   }
 
   try {
-    const response = await fetch(articleUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-      },
-      signal: AbortSignal.timeout(2500)
-    });
+    const response = await fetchArticleHtml(articleUrl, 3500);
 
     if (response.status === 401 || response.status === 402 || response.status === 403) {
-      const result = {
+      return res.json({
         success: false,
         reason: 'paywall',
         message: 'Cet article est sous paywall ou réservé aux abonnés de ce média.'
-      };
-      articleContentCache.set(articleUrl, { data: result, timestamp: Date.now() });
-      return res.json(result);
+      });
     }
 
     if (!response.ok) {
@@ -230,6 +223,16 @@ router.get('/full-content', async (req, res) => {
     }
 
     const html = await response.text();
+
+    // Détection de protection anti-bot ou défi d'accès résiduel
+    if (html.includes('Client Challenge') || html.includes('licensing[@]groupelemonde.fr')) {
+      return res.json({
+        success: false,
+        reason: 'paywall',
+        message: 'Cet article est protégé ou réservé aux abonnés.'
+      });
+    }
+
     const content = extractCleanArticleContent(html, articleUrl);
 
     let image = null;
@@ -243,13 +246,16 @@ router.get('/full-content', async (req, res) => {
       }
     }
 
+    const isSuccess = Boolean(content && content.length > 80);
     const result = {
-      success: Boolean(content && content.length > 80),
+      success: isSuccess,
       content: content || null,
       image
     };
 
-    articleContentCache.set(articleUrl, { data: result, timestamp: Date.now() });
+    if (isSuccess) {
+      articleContentCache.set(articleUrl, { data: result, timestamp: Date.now() });
+    }
     res.json(result);
   } catch (err) {
     res.json({

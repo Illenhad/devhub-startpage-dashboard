@@ -917,11 +917,14 @@ class RssFullWidget {
         `;
       }
 
-      // Si le contenu est court (moins de 250 caractères, typique des résumés de flux ou agrégateurs)
+      // Si le contenu est court (moins de 1000 caractères, typique des résumés de flux ou agrégateurs) ou déjà extrait
       const textOnly = contentHtml.replace(/<[^>]+>/g, '').trim();
       let extraHtml = '';
 
-      if (textOnly.length < 250) {
+      const isShortSummary = !article.fullContent && textOnly.length < 1000;
+      const hasExtractedFull = Boolean(article.fullContent);
+
+      if (isShortSummary || hasExtractedFull) {
         const isGoogleNews = article.link && article.link.includes('news.google.com');
         const mediaSource = article.feedName || article.author || 'le site d’origine';
 
@@ -947,7 +950,9 @@ class RssFullWidget {
           </div>
         `;
 
-        if (!isGoogleNews && !article._fullContentAttempted) {
+        if (hasExtractedFull) {
+          extraHtml = sourceCalloutHtml + `<div class="mt-4 pt-4 border-t border-zinc-800">${article.fullContent}</div>`;
+        } else if (!isGoogleNews && !article._fullContentAttempted) {
           article._fullContentAttempted = true;
 
           const indicatorHtml = `
@@ -967,7 +972,7 @@ class RssFullWidget {
             .then(r => r.json())
             .then(data => {
               if (data.success && data.content && data.content.length > 80) {
-                article.content = data.content;
+                article.fullContent = data.content;
                 if (!article.image && data.image) {
                   article.image = data.image;
                 }
